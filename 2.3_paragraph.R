@@ -44,7 +44,6 @@ text(toy, digits=2)
 
 # Note that when raster populates the raster layer with the Poisson data (rpois), it will 
 # start from the top left of the layer and populate right and then down:
-
 ncell(toy)
 toy2 <- toy
 values(toy2) <- 1:ncell(toy) # create numeric sequence 1-36
@@ -55,7 +54,6 @@ text(toy2, digits=2)
 # using the aggregate function (Fig. 2.5). Two common approaches are to: (1) take the mean 
 # value of the cells being aggregated; or (2) use a “majority rule,” where we take the most 
 # frequent value in the cells being aggregated. We can illustrate each of these approaches as:
-
 toy_mean <- aggregate(toy, fact=2, fun=mean) #mean value
 toy_maj <- aggregate(toy, fact=2, fun=modal) #majority rule
 
@@ -67,11 +65,18 @@ toy_maj <- aggregate(toy, fact=2, fun=modal) #majority rule
 # which will occur more frequently when aggregating fewer cells. 
 
 
-
+# For these toy landscapes, we can formally ask whether the means and variances change as we 
+# increase grain size, as described above. It is straightforward to do mathematical operations 
+# on values of raster layers. Here, we contrast means and variances of the original raster to 
+# that of the raster where we used the mean values to increase grain size using the cellStats 
+# function (results not shown):
 cellStats(toy, mean)
 cellStats(toy, var)
 cellStats(toy_mean, mean)
 cellStats(toy_mean, var)
+# In this situation, the mean value remains identical (3.417), whereas the variance decreases 
+# as we increase the grain size (from 2.82 to 0.86).
+
 
 toy_dis2 <- disaggregate(toy, fact=2)
 toy_dis2_bilinear <- disaggregate(toy, fact=2,
