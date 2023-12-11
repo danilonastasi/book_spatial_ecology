@@ -98,7 +98,8 @@ forest <- reclassify(nlcd, reclass.mat)
 buf1km <- 1000
 buf5km <- 5000
 #buffer only first site
-# buffer.site1.1km <- buffer(sites[1,], width=buf1km) # it does not work, let's change with st_buffer function and argument dist instead of width
+# buffer.site1.1km <- buffer(sites[1,], width=buf1km) # it does not work, let's change with st_buffer function 
+                                                      # and argument 'dist' instead of 'width'
 buffer.site1.1km <- st_buffer(sites[1,], dist=buf1km)
 # buffer.site1.5km <- buffer(sites[1,], width=buf5km)
 buffer.site1.5km <- st_buffer(sites[1,], dist=buf5km)
