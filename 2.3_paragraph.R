@@ -1,22 +1,72 @@
 
 ##### paragraph 2.3.3  #####
 
+# We will first use simulated data to illustrate some ways in which we can alter 
+# the scale of raster data and interpret summaries based on these changes.
+
+# We will then illustrate a simple, multiscale analysis of reptile response to the 
+# amount of forest cover in the Southeast USA. These data come from drift fence 
+# arrays at 78 forested sites in Alabama, Georgia, and Florida, USA.
+
+
+######                                    ######
+###### let's start with the first example ######
+######                                    ######
+
+# raster is a package dedicated to the use of raster (or grid) GIS layers and 
+# allows for many types of summaries, analyses, and visualizations.
+
+# First, we create a toy landscape. To do so, we set up an empty raster layer 
+# and then populate the empty cells with randomly generated values taken from a 
+# Poisson distribution. The Poisson distribution is a discrete probability 
+# distribution (i.e., a probability mass distribution) that is relevant for 
+# count-based (integer) data, where the data, y, can take on the values of 0, 1, 2, etc. 
+# It assumes that the mean equals the variance. By using a Poisson distribution, 
+# we will set values of the cells to non-negative integers, which is a common 
+# format for storing land-cover information.
+
 library(raster)
-set.seed(16)#sets random number seed for repeatability
-toy <- raster(ncol=6, nrow=6, xmn=1, xmx=6, ymn=1, ymx=6)
-values(toy) <- rpois(ncell(toy), lambda=3)
+set.seed(16) # sets random number seed for repeatability. This allows users to be 
+             # able to replicate analyses where random number generators are used
+toy <- raster(ncol=6, nrow=6, xmn=1, xmx=6, ymn=1, ymx=6) # create a 6 × 6 raster, 
+                                          # specifying the numbers of rows (nrow) 
+                                          # and columns (ncol), as well as the minimum 
+                                          # and maximum coordinates
+values(toy) <- rpois(ncell(toy), lambda=3) # populate the raster by taking random 
+                                           # draws (i.e., random deviates) from the 
+                                           # Poisson distribution with the rpois function.
 ncell(toy)
 plot(toy)
 text(toy, digits=2)
 
+# In the above code, we generate 36 values (ncell(toy) = 36) from the Poisson distribution, 
+# where the mean value = 3.
+
+# Note that when raster populates the raster layer with the Poisson data (rpois), it will 
+# start from the top left of the layer and populate right and then down:
+
 ncell(toy)
 toy2 <- toy
-values(toy2) <- 1:ncell(toy)
+values(toy2) <- 1:ncell(toy) # create numeric sequence 1-36
 plot(toy2)
 text(toy2, digits=2)
 
+# Altering the grain of a raster layer is straightforward. We can increase the grain size 
+# using the aggregate function (Fig. 2.5). Two common approaches are to: (1) take the mean 
+# value of the cells being aggregated; or (2) use a “majority rule,” where we take the most 
+# frequent value in the cells being aggregated. We can illustrate each of these approaches as:
+
 toy_mean <- aggregate(toy, fact=2, fun=mean) #mean value
-toy_maj <- aggregate(toy, fact=3, fun=modal) #majority rule
+toy_maj <- aggregate(toy, fact=2, fun=modal) #majority rule
+
+# Note that these rules are helpful for different situations. For categorical data 
+# (e.g., vegetation types), a majority rule might be helpful because it will aggregate cells 
+# based on the most frequent category. For continuous data (e.g., canopy cover), taking the 
+# mean value might be more helpful than a majority rule (which would take the mode of the values). 
+# In addition, the modal function can be limited when ties are common (no majority value), 
+# which will occur more frequently when aggregating fewer cells. 
+
+
 
 cellStats(toy, mean)
 cellStats(toy, var)
