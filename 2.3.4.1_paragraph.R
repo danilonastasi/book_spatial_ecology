@@ -163,9 +163,7 @@ percentforest1km <- forestcover1km / bufferarea * 100
 # That’s it! Now to repeat this for all of the points, we use a for loop, where we iteratively 
 # go through all points, calculating buffers, extracting forest area for each buffer, and then 
 # append the proportion of forest area for each point (and/or buffer size) for each sample 
-# location. 
-
-# To do this more efficiently for so many points, we will use the rasterize function 
+# location. To do this more efficiently for so many points, we will use the rasterize function 
 # to convert the buffer into a raster layer, which can be computationally quicker than not 
 # rasterizing the buffer. We make a generic function that can then be used to automate all 
 # of the steps for a given point. In this function, we first crop the layer to the buffer so 
@@ -185,6 +183,11 @@ coveramount <- cellStats(land.buffer, 'sum')*grain
 percentcover <- 100*(coveramount/bufferarea.i)
 return(percentcover)
 }
+# So this function requires x–y locations of a point, the buffer distance of interest (size), 
+# a binary land cover raster layer, and the grain area of the map (note the latter could build 
+# into the function, but it would recalculate grain area each iteration, which is not necessary 
+# for this example). We use this function, nesting it in a for loop, to calculate forest cover 
+# for all the points:
 
 #create empty vector for storing output first
 f1km <- vector(NA, length = nrow(sites))
