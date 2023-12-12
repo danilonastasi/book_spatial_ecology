@@ -1,5 +1,9 @@
 
-##### paragraph 2.3.4.1 #####
+#####  R. version: 4.3.2 2023/10/31  #####
+#####        paragraph 2.3.4.1       #####
+
+#####    code tested on 12/12/2023   #####
+
 
 ##### All data and R code can be downloaded at the first author’s website #####
 # ( http://​www.​fletcherlab.​com under “Products”) 
