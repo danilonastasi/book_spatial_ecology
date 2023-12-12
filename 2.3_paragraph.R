@@ -23,8 +23,7 @@
 # count-based (integer) data, where the data, y, can take on the values of 0, 1, 2, etc. 
 # It assumes that the mean equals the variance. By using a Poisson distribution, 
 # we will set values of the cells to non-negative integers, which is a common 
-# format for storing land-cover information.
-
+# format for storing land-cover information:
 library(raster)
 set.seed(16) # sets random number seed for repeatability. This allows users to be 
              # able to replicate analyses where random number generators are used
@@ -38,7 +37,6 @@ values(toy) <- rpois(ncell(toy), lambda=3) # populate the raster by taking rando
 ncell(toy)
 plot(toy)
 text(toy, digits=2)
-
 # In the above code, we generate 36 values (ncell(toy) = 36) from the Poisson distribution, 
 # where the mean value = 3.
 
@@ -64,7 +62,6 @@ toy_maj <- aggregate(toy, fact=2, fun=modal) #majority rule
 # In addition, the modal function can be limited when ties are common (no majority value), 
 # which will occur more frequently when aggregating fewer cells. 
 
-
 # For these toy landscapes, we can formally ask whether the means and variances change as we 
 # increase grain size, as described above. It is straightforward to do mathematical operations 
 # on values of raster layers. Here, we contrast means and variances of the original raster to 
@@ -77,21 +74,37 @@ cellStats(toy_mean, var)
 # In this situation, the mean value remains identical (3.417), whereas the variance decreases 
 # as we increase the grain size (from 2.82 to 0.86).
 
-
+# We can reduce the grain size by resampling the data (Fig. 2.6). This can be accomplished with 
+# the disaggregate function. Two common approaches are to use a simple disaggregation, 
+# which simply replicates values, or using bilinear interpolation, which is based on a 
+# distance-weighted average of values in both the x and y directions (hence “bi'” linear):
 toy_dis2 <- disaggregate(toy, fact=2)
-toy_dis2_bilinear <- disaggregate(toy, fact=2,
-method='bilinear')
+toy_dis2_bilinear <- disaggregate(toy, fact=2, method='bilinear')
+# Bilinear interpolation can be useful when working with continuous data but would not be 
+# helpful if data were based on land-cover categories.
 
+# Altering the extent is also straightforward. We can reduce the extent of the map by use 
+# of the crop function. To do so, we need to create a new extent for cropping. This can 
+# be a simply rectangle of coordinates or we could use a polygon file (e.g., a shapefile). 
+# In contrast, the extent can be increased using the extent function. For this toy example, 
+# we use new coordinates for changing the extent:
 e <- extent(2, 4, 2, 4) #first create new, smaller extent
 toy_crop <- crop(toy, e)
 plot(toy_crop)
-text(toy_crop)
+text(toy_crop) # now we have a zoom in of toy in these coordinates (extent xmin: 2 xmax: 4
+               # ymin: 2 ymax: 4)
 
-#increase the extent
-e <- extent(0, 7, 0, 7) #first create new, larger extent
+ #increase the extent:
+e <- extent(0, 11, 0, 11) #first create new, larger extent
 toy_big <- extend(toy, e)
 plot(toy_big)
-text(toy_big)
+text(toy_big) # it is showed data in toy, in a small window but in a larger raster
+# In this case, increasing the extent is not helpful unless we also populate the data in 
+# the new extent.
+
+# Simple examples like this one can be generally helpful when starting a new analysis 
+# problem in spatial ecology because they can provide a tractable means of understanding 
+# what different functions and models do.
 
 
 ##### paragraph 2.3.4 #####
