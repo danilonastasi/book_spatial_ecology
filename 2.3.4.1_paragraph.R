@@ -18,6 +18,7 @@ proj4string(nlcd)
 # or
 library(sf)
 st_crs(nlcd) # from sf package, there is a difference
+# crs(nlcd)
 # This projection contains lots of information. Most importantly, aea refers to 
 # Albers Equal Area projection. We define the projection so that we can make sure 
 # the transect data are considered to be in the same projection as the land-cover data
@@ -25,6 +26,7 @@ st_crs(nlcd) # from sf package, there is a difference
 nlcd_proj <- projection(nlcd) # we assign the projection to nlcd_proj object
 # or
 # nlcd_proj <- st_crs(nlcd) # from sf package, there is a difference
+# nlcd_proj_terra <- crs(nlcd) # different from the first
 
 # We can inspect other aspects of the raster layer as well, including the resolution 
 # (grain size) , extent, and number of cells, with the res, extent, and ncell functions. 
@@ -46,11 +48,14 @@ levels(nlcd)
 # with the class function) with the readOGR function (from rgdal package, is not working anymore)
 
 # library(rgdal) --> not working anymore, let's change package and function
-# library(terra)
 # sites <- readOGR("reptiledata") we change readOGR function with read_sf function from package sf
-sites <- read_sf("reptiledata") # from sf package, sites does not have any projection
+# sites <- read_sf("reptiledata") # from sf package, sites does not have any projection
 # or
-# sites <- vect("reptiledata") # from terra package
+library(terra)
+sites <- vect("reptiledata") # from terra package but result is different from 
+                               # readOGR function, it will be SpatVector
+sites <- as(sites, "Spatial") # convert the object in a SpatialPointsDataFrame because
+                              # there was an error message in the third row of the function
 class(sites)
 
 summary(sites)
@@ -59,8 +64,8 @@ summary(sites)
 # seven of which are different types of conifer forest, whereas one is corn. It also shows that 
 # there are 85 sites (points) and that it does not know what the projection is for the layer. 
 
-# proj4string(sites) <- nlcd_proj #set projection   # it does not work
-st_crs(sites) <- nlcd_proj  # from sf package, we assign projection to sites
+proj4string(sites) <- nlcd_proj # set projection, we assign projection to sites
+# st_crs(sites) <- nlcd_proj  # from sf package, we assign projection to sites
 
 # We can call the SpatialPointsDataFrame using the generic functions. For example:
 head(sites, 2)
@@ -123,11 +128,10 @@ forest <- reclassify(nlcd, reclass.mat)
 buf1km <- 1000
 buf5km <- 5000
 #buffer only first site
-# buffer.site1.1km <- buffer(sites[1,], width=buf1km) # it does not work, let's change with st_buffer function 
-                                                      # and argument 'dist' instead of 'width'
-buffer.site1.1km <- st_buffer(sites[1,], dist=buf1km)
-# buffer.site1.5km <- buffer(sites[1,], width=buf5km)
-buffer.site1.5km <- st_buffer(sites[1,], dist=buf5km)
+buffer.site1.1km <- buffer(sites[1,], width=buf1km) 
+# buffer.site1.1km <- st_buffer(sites[1,], dist=buf1km)
+buffer.site1.5km <- buffer(sites[1,], width=buf5km)
+# buffer.site1.5km <- st_buffer(sites[1,], dist=buf5km)
 
 # The raster package has a useful function for viewing portions of raster layers. Here we use 
 # the zoom function to zoom into the buffer we just created:
@@ -137,8 +141,7 @@ plot(buffer.site1.5km, border="red", lwd = 5, add=T) # zoom function first, plot
                                                      # they go together
 plot(buffer.site1.1km, border="red", lwd = 3, add=T)
 # points(sites[1,], pch=19, cex=2, add=T) # error message, we have to use terra package
-library(terra)
-points(sites[1,], pch=19, cex=2, add=T) 
+points(sites[1,], pch=19, cex=2, add=T) # warning message but it works?
 
 # How can we extract appropriate information at different scales? Let us focus on this 
 # first site. Once we can capture the information we need for one point, we then repeat 
@@ -170,11 +173,13 @@ percentforest1km <- forestcover1km / bufferarea * 100
 # that we can work on a smaller extent, then we create an empty raster that we use for 
 # rasterizing the buffer. With that new layer, we can use the mask function to create a new 
 # raster that only includes forest cover within the buffer:
+
 # let's create a function:
 BufferCover <- function(coords, size, landcover, grain){
 bufferarea.i <- pi*size^2/10000
-coords.i <- SpatialPoints(cbind(coords[i, 1], coords[i, 2]))
-buffer.i <- gBuffer(coords.i, width=size)
+coords.i <- SpatialPoints(cbind(coords[i, 1], coords[i, 2])) # see above, row 174
+# buffer.i <- gBuffer(coords.i, width=size) # does not work, let's change:
+buffer.i <- buffer(coords.i, width=size)  # buffer function from terra package
 crop.i <- crop(landcover, buffer.i)
 crop.NA <- setValues(crop.i, NA) #for the rasterization
 buffer.r <- rasterize(buffer.i, crop.NA) # rasterize buffer
@@ -189,6 +194,40 @@ return(percentcover)
 # for this example). We use this function, nesting it in a for loop, to calculate forest cover 
 # for all the points:
 
-#create empty vector for storing output first
-f1km <- vector(NA, length = nrow(sites))
-f2km <- vector(NA, length = nrow(sites))
+# create empty vector for storing output first
+# f1km <- vector(NA, length = nrow(sites)) # error message, let's change with:
+f1km <- vector(length = nrow(sites))
+# f2km <- vector(NA, length = nrow(sites)) # same error message
+f2km <- vector(length = nrow(sites))
+
+for(i in 1:nrow(sites)) {
+   f1km[i] <- BufferCover(coords = sites, size = 1000, landcover = forest, grain = grainarea)
+   # f1km[i] <- BufferCover(coords = sites, size = 2000, landcover = forest, grain = grainarea) # f1km I think is an error
+   f2km[i] <- BufferCover(coords = sites, size = 2000, landcover = forest, grain = grainarea)
+   print(i) #print iteration in for loop
+}
+# make data frame with associated site data
+forest.scale <- data.frame(site = sites$site, x = sites$coords_x1, y = sites$coords_x2, 
+f1km = f1km, f2km = f2km)
+
+# We then use the above function to calculate the proportion of forest cover at different 
+# buffer sizes for all of the points. The above code shows calculations for 1000 and 2000 m, 
+# but we also ran 500, 3000, 4000, and 5000 m. In doing so, we find that the percent of forest 
+# cover at different scales tends to be highly correlated (Fig. 2.9). This is not surprising, 
+# given that calculations at a larger buffer size include area considered at smaller buffer 
+# sizes. However, this correlation has implications for the interpretation of scale effects 
+# (see below). Note that in R (and in other GIS), as the buffer increases, the computation 
+# time also increases. See a recent package in R, spatialEco (Evans 2017), for similar 
+# functionality regarding calculating landscape metrics surrounding points.
+
+# We can also repeat this process for different grains by using the aggregate function to 
+# coarsen the map. Why might we want to do this? A primary reason is to translate the map 
+# to a resolution of data being collected in the field that we are using for making inferences. 
+# In this case, we are considering data collected along two, 200 × 100 m transects within 
+# forest patches, or 4 ha. If we wish to make predictions of species–environment relationships, 
+# we may want our map grain to reflect the sampling grain. Consequently, we would want the 
+# map to have an approximate 200 × 200 m grain. We can do this as:
+# changing the grain
+forest200 <- aggregate(forest, fact=7, fun=modal)
+
+
