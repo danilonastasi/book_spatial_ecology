@@ -129,18 +129,29 @@ buffer.site1.1km <- st_buffer(sites[1,], dist=buf1km)
 # buffer.site1.5km <- buffer(sites[1,], width=buf5km)
 buffer.site1.5km <- st_buffer(sites[1,], dist=buf5km)
 
-# The raster package has a useful function for viewing portions of raster layers. Here we use the zoom function 
-# to zoom into the buffer we just created:
+# The raster package has a useful function for viewing portions of raster layers. Here we use 
+# the zoom function to zoom into the buffer we just created:
 #zoom into area for viewing
 zoom(nlcd,buffer.site1.5km)
 plot(buffer.site1.5km, border="red", lwd = 5, add=T) # zoom function first, plot function after
                                                      # they go together
 plot(buffer.site1.1km, border="red", lwd = 3, add=T)
-points(sites[1,], pch=19, cex=2, add=T)
+# points(sites[1,], pch=19, cex=2, add=T) # error message, we have to use terra package
+library(terra)
+points(sites[1,], pch=19, cex=2, add=T) 
 
+# How can we extract appropriate information at different scales? Let us focus on this 
+# first site. Once we can capture the information we need for one point, we then repeat 
+# for all sites. There are several ways to accomplish this task. The simplest way is to 
+# take the buffered layer we just created and use the crop and mask functions:
 buffer.forest1.1km <- crop(forest, buffer.site1.1km)
 buffer.forest1.1km <- mask(forest, buffer.site1.1km)
 
+# Extracting the forest area is straightforward from here. Given that the map is a binary 
+# map of forest cover, we can use the cellStats function in the raster package to sum the 
+# amount of forest cover (sum the 1’s for each cell to obtain the total number of forest cells). 
+# We can then multiple this number by the grain to get the forest area and divide by the buffer 
+# size to get the proportion of forest:
 #area of each cell, in ha
 grainarea <- res(forest)[[1]]^2/10000
 #area of 1km buffer
@@ -149,6 +160,16 @@ bufferarea <- (3.14159*buf1km^2)/10000
 forestcover1km <- cellStats(buffer.forest1.1km, 'sum') * grainarea
 percentforest1km <- forestcover1km / bufferarea * 100
 
+# That’s it! Now to repeat this for all of the points, we use a for loop, where we iteratively 
+# go through all points, calculating buffers, extracting forest area for each buffer, and then 
+# append the proportion of forest area for each point (and/or buffer size) for each sample 
+# location. To do this more efficiently for so many points, we will use the rasterize function 
+# to convert the buffer into a raster layer, which can be computationally quicker than not 
+# rasterizing the buffer. We make a generic function that can then be used to automate all 
+# of the steps for a given point. In this function, we first crop the layer to the buffer so 
+# that we can work on a smaller extent, then we create an empty raster that we use for 
+# rasterizing the buffer. With that new layer, we can use the mask function to create a new 
+# raster that only includes forest cover within the buffer:
 BufferCover <- function(coords, size, landcover, grain){
 bufferarea.i <- pi*size^2/10000
 coords.i <- SpatialPoints(cbind(coords[i, 1], coords[i, 2]))
