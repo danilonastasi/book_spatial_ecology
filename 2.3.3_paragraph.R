@@ -1,5 +1,9 @@
 
-##### paragraph 2.3.3  #####
+#####  R. version: 4.3.2 2023/10/31  #####
+#####        paragraph 2.3.3      #####
+
+#####    code tested on 12/11/2023   #####
+
 
 # We will first use simulated data to illustrate some ways in which we can alter 
 # the scale of raster data and interpret summaries based on these changes.
