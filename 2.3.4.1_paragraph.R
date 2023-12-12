@@ -163,13 +163,16 @@ percentforest1km <- forestcover1km / bufferarea * 100
 # That’s it! Now to repeat this for all of the points, we use a for loop, where we iteratively 
 # go through all points, calculating buffers, extracting forest area for each buffer, and then 
 # append the proportion of forest area for each point (and/or buffer size) for each sample 
-# location. To do this more efficiently for so many points, we will use the rasterize function 
+# location. 
+
+# To do this more efficiently for so many points, we will use the rasterize function 
 # to convert the buffer into a raster layer, which can be computationally quicker than not 
 # rasterizing the buffer. We make a generic function that can then be used to automate all 
 # of the steps for a given point. In this function, we first crop the layer to the buffer so 
 # that we can work on a smaller extent, then we create an empty raster that we use for 
 # rasterizing the buffer. With that new layer, we can use the mask function to create a new 
 # raster that only includes forest cover within the buffer:
+# let's create a function:
 BufferCover <- function(coords, size, landcover, grain){
 bufferarea.i <- pi*size^2/10000
 coords.i <- SpatialPoints(cbind(coords[i, 1], coords[i, 2]))
