@@ -235,3 +235,75 @@ f1km = f1km, f2km = f2km)
 forest200 <- aggregate(forest, fact=7, fun=modal)
 
 
+#####                                #####
+#####        paragraph 2.3.4.2       #####
+#####                                #####
+
+# first load the reptile data on southeastern five-lined skinks (FLSK) and merge it to our 
+# summaries of forest cover calculated at different scales:
+flsk <- read.csv("reptiles_flsk.csv", header=T)
+flsk <- merge(flsk, forest.scale, by = "site", all = F)
+
+# Generalized linear models, like logistic regression, can be then be implemented in R 
+# with the glm function . For instance, a logistic regression model with forest cover 
+# calculated at the 1 km scale can be fit as:
+pres.1km <- glm(pres ~ f1km, family = "binomial", data = flsk)
+logLik(pres.1km)
+
+nll <- function(par, cov, y) {
+   alpha <- par[1]
+   beta <- par[2]
+   lp <- alpha + beta*cov #linear predictor
+   p <- plogis(lp) #back-transform
+   loglike <- -sum(y*log(p) + (1-y)*log(1-p)) #negative ∣∣
+   return(loglike)
+}
+
+#fit logistic model
+lr.buffer <- optim(par = c(0, 0), fn = nll, cov = flsk$f2km, y = flsk$pres, hessian = T)
+lr.buffer$par
+
+lr.buffer.vc <- solve(lr.buffer$hessian) #var−cov matrix
+lr.buffer.se <- sqrt(diag(lr.buffer.vc)) #SE
+lr.buffer.se
+
+pres.2km <- glm(pres ~ f2km, family = "binomial", data = flsk)
+
+summary(pres.2km)$coefficients
+
+nll.kernel <- function(par, D, cov, y) {
+   sig <- exp(par[1]) #ensures sig > 0
+   alpha <- par[2]
+   beta <- par[3]
+   cov.w <- apply(D, 1, function(x) {
+     w0 <- exp(-x^2 / (2 * sig^2)) #Gaussian kernel
+     w0[w0==1] <- 0 #for truncated data
+     w <- w0/sum(w0) #kernel weights; sums to 1
+     sum(cov * w) #weighted average of raster
+     })
+   lp <- alpha + beta * cov.w #linear predictor
+   p <- plogis(lp) #back-transform
+   loglike <- -sum(y*log(p) + (1-y)*log(1-p)) #nll
+   return(loglike)
+}
+
+for200.df <- data.frame(rasterToPoints(forest200))
+library(fields)
+D <- rdist(as.matrix(flsk[,c("x","y")]), as.matrix(for200.df[,c("x","y")]))
+
+library(Matrix)
+D <- D/1000 #in km
+D[D > 10] <- 0 #truncate to only consider max dist
+D <- Matrix(D, sparse = TRUE)
+
+cov.subset <- which(colSums(D)!=0, arr.ind = T)
+D <- D[, cov.subset]
+
+lr.kernel <- optim(fn = nll.kernel, hessian = T, par = c(0,-6,8), D = D, 
+   cov = for200.df$layer[cov.subset], y = flsk$pres)
+lr.kernel$par
+
+AICkernel <- 2 * lr.kernel$value + 2 * length(lr.kernel$par)
+AICbuffer <- 2 * lr.buffer$value + 2 * length(lr.buffer$par)
+c(AICkernel, AICbuffer)
+
