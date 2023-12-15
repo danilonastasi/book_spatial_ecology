@@ -1,7 +1,7 @@
 
 #####  R. version: 4.3.2 2023/10/31  #####
 #####        paragraph 2.3.3      #####
-#####  from the book "Spatial Ecology and Conservation Modeling - Springer(2018)  #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 
 #####    code tested on 12/11/2023   #####
 
