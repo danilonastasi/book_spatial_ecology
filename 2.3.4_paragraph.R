@@ -1,7 +1,7 @@
 
 #####  R. version: 4.3.2 2023/10/31  #####
 #####        paragraph 2.3.4.1       #####
-#####  from the book "Spatial Ecology and Conservation Modeling - Springer(2018)  #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 
 
 #####    code tested on 12/12/2023   #####
@@ -239,7 +239,7 @@ forest200 <- aggregate(forest, fact=7, fun=modal)
 
 #####                                #####
 #####        paragraph 2.3.4.2       #####
-#####  from the book "Spatial Ecology and Conservation Modeling - Springer(2018)  #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 
 #####     code tested on 12/14/2023  #####
 
