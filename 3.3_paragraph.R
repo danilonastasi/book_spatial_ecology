@@ -1,5 +1,6 @@
 
 #####  R. version: 4.3.2 2023/10/31  #####
+
 #####        paragraph 3.3.3       #####
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
@@ -66,10 +67,65 @@ levels(nlcd) <- land_cover # we add the new column to nlcd
 # plot with custom color scheme
 
 # install.packages("rasterVis")
-library(rasterVis)
+library(rasterVis)  ##### I got some problems and finally I fixed it but I am not sure how ####
 land_col <- c("green", "orange", "yellow", "brown", "white", "blue")
 plot(nlcd, legend = T, col = land_col)
-levelplot(nlcd, col.regions = land_col, xlab = "", ylab = "")
 
+levelplot(nlcd, col.regions = land_col, xlab = "", ylab = "")  # we associate the new level in legend with the region
+##### I got problems with levelplot function, I fixed them but I did not undertand how ####
+
+
+#####        paragraph 3.3.3 .1      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+# To quantify characteristics of patches, the first step is to delineate the patches 
+# themselves. This step is not trivial and can have important impacts on the conclusions 
+# regarding the effects of patch variation on ecological patterns and processes. For vector 
+# maps, typically patches are delineated by the user (e.g., hand digitizing aerial 
+# photographs). However, for raster-based maps, we typically automate patch delineation, 
+# using one of two common rules: the four-neighbor rule (also known as the “rook’s rule”) 
+# and the eight-neighbor rule (also known as the “Queen’s rule”) (Fig. 3.5). Using the 
+# four-neighbor rule will invariably result in a greater number of patches and smaller 
+# patches than using the eight-neighbor rule. Note in some situations we might want to 
+# use a 16-neighbor rule, such as if we would like for patch delineation to account for 
+# the potential for gap-crossing by organisms (Bowman and Fahrig 2002), although in 
+# practice this is rarely done.
+
+# We focus on identifying patches of forest and interpreting their variation. First, 
+# we delineate patches, then we use these delineations to calculate metrics for the 
+# patches that describe variation in patch structure. 
+
+# We reclassify the NLCD layer to create a binary layer of forest, akin to the island 
+# model of land-cover variation. To do so, we create a reclassification matrix, similar 
+# to the approach shown in Chap. 2. In this matrix, the first column is the original 
+# land-cover categories and the second column is the new categories:
+#create a reclassification matrix
+nlcd.cat <- unique(nlcd)
+nlcd.cat.for <- c(1, 0, 0, 0, 0, 0)
+reclass.mat <- cbind(nlcd.cat, nlcd.cat.for) # new matrix where we associate 1 to ID 1, 
+                                             # forest and 0 to the others
+#forest binary layer from reclassification matrix
+nlcd.forest <- reclassify(nlcd, reclass.mat)  # binary, set value 1 to forest, zero to others
+plot(nlcd.forest)
+
+# With this new binary forest layer (Fig. 3.6a) we can delineate forest patches. 
+# Both the raster and SDMTools packages have a means to do this, but currently the 
+# SDMTools package only allows patch delineation based on an eight-neighbor rule 
+# (Fig. 3.5b). Consequently, we will use the raster package to have more flexibility 
+# in accomplishing this task using the clump function:
+
+#create patchIDs using clump from raster for 8-neighbor rule
+forest.patchID <- clump(nlcd.forest, directions = 8) # error message, we need to install:
+# install.packages("igraph")
+
+# Note that, similar to cell IDs (see Chap. 2), this function labels patches based 
+# on integer values, starting in the northwestern (top left) portion of the map and 
+# working down (Fig. 3.5). With this new patch ID layer, we can calculate a variety 
+# of patch-based metrics using the PatchStats function in SDMTools :
+
+# for.pstat <- PatchStat(forest.patchID, cellsize = res(nlcd.forest)[[1]]) # error message,
+                                                  # we need the SMDTools package but it
+                                                # cannot be installed
 
 
