@@ -118,6 +118,7 @@ plot(nlcd.forest)
 #create patchIDs using clump from raster for 8-neighbor rule
 forest.patchID <- clump(nlcd.forest, directions = 8) # error message, we need to install:
 # install.packages("igraph")
+plot(forest.patchID)
 
 # Note that, similar to cell IDs (see Chap. 2), this function labels patches based 
 # on integer values, starting in the northwestern (top left) portion of the map and 
@@ -127,5 +128,17 @@ forest.patchID <- clump(nlcd.forest, directions = 8) # error message, we need to
 # for.pstat <- PatchStat(forest.patchID, cellsize = res(nlcd.forest)[[1]]) # error message,
                                                   # we need the SMDTools package but it
                                                 # cannot be installed
+#### after downloading Rtools43 for Windows:
+#### https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+#### installing it, has been possible to insstall old packages
+#### I got the SDMTools old package from the cran archive:
+#### https://cran.r-project.org/src/contrib/Archive/SDMTools/
+#### downloading the version SDMTools_1.1-221.2.tar.gz 
+#### and installing it
 
+# install.packages("C:/Users/danil/Downloads/SDMTools_1.1-221.2.tar.gz")
+###### reading the file DESCRIPTION in the zip file I installed before the Imports and Suggest packages
+library(SDMTools)
+for.pstat <- PatchStat(forest.patchID, cellsize = res(nlcd.forest)[[1]])
+names(for.pstat)
 
