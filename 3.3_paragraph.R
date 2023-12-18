@@ -30,8 +30,8 @@
 
 # let's start with the code:
 
-##### we need some objects we created in the code 2.3.4_paragraph.R #####
-##### let's run the R code 2.3.4_paragraph.R totally #####
+##### we need the object "forest" we created in the code 2.3.4_paragraph.R #####
+##### let's run the R code 2.3.4_paragraph.R until row: 127 #####
 
 
 library(raster)
@@ -239,7 +239,7 @@ for.pstat.sd["shape.index"]
 
 #create polygon layer
 
-#### we need the archived package rgeos ####
+#### we need the archived package rgeos, we install it thanks to Rtools43 ####
 # install.packages("https://cran.r-project.org/src/contrib/Archive/rgeos/rgeos_0.6-4.tar.gz")
 library(rgeos)
 forest.poly <- rasterToPolygons(forest.patchID, dissolve = T) # it works also without rgeos package
@@ -247,3 +247,79 @@ forest.poly <- rasterToPolygons(forest.patchID, dissolve = T) # it works also wi
 core.poly <- gBuffer(forest.poly, width = -100, byid = T) 
 core.area <- gArea(core.poly, byid = T)
 
+# This general approach is useful for delineating core areas of different sizes; however, 
+# it may be computationally slow for large landscapes. In addition, in many situations we 
+# may want to map more detail in edge effects , such as using the “effective area model” 
+# (Sisk et al. 1997). The effective area model maps edge response functions, such as 
+# variation in abundance as a function of distance from edge, for different edge types. 
+# Such models can be implemented by creating raster layers based on distances to boundaries. 
+# For instance, we can use the distance function in the raster package to create a new 
+# raster layer that shows the distance to edge. To implement this approach, we reformat 
+# our forest layer, such that forest is NA. This function will then calculate the nearest 
+# distance from each non-NA pixel to each NA pixel:
+
+#re-format raster
+nlcd.forestNA <- nlcd.forest
+nlcd.forestNA[nlcd.forestNA == 1] <- NA
+#create a distance to edge raster for forest land cover
+forest.dist <- raster::distance(nlcd.forestNA)
+
+# Much more information is provided with this new raster layer (Fig. 3.9b). Note that in 
+# the above code, we specified the raster package in the call of the distance function 
+# (raster::distance), because the SDMTools package also has a different distance function.
+
+# Isolation-related patch metrics can be quantified using distances based on patch centroids 
+# or edge–edge distances. Both of these types of distance metrics can be calculated with 
+# the rgeos package:
+
+#centroids of polygons
+forest.centroid <- gCentroid(forest.poly, byid = T)
+#edge-edge distance matrix
+edge.dist <- gDistance(forest.poly, byid = T)
+#centroid-centroid distance matrix
+cent.dist <- gDistance(forest.centroid, byid = T)
+
+# With these distance matrices, we can use the apply function to calculate the nearest 
+# neighbor distances, or the minimum distance from one patch to any other patch in on the 
+# map. To do so, we first make the diagonal of the distance matrix NA, so that we ignore 
+# the diagonal (the focal patch, for which distance = 0) when summarizing information 
+# regarding other patches on the map. We can then use the apply function to identify the 
+# minimum distance to another patch:
+
+#patch-level nearest-neighbor distance
+diag(cent.dist) <- NA
+diag(edge.dist) <- NA
+nnd.cent <- apply(cent.dist, 1, min, na.rm = T)
+nnd.edge <- apply(edge.dist, 1, min, na.rm = T)
+
+# Note here that using edge–edge (nnd.edge) versus centroid–centroid (nnd.cent) distances 
+# provides different results and these distances are not correlated (r = 0.02). The distance 
+# matrix can also be used to derive other patch-level and class-level summary statistics 
+# (e.g., mean distance, SD distance) in a straightforward way.
+
+# The proximity index incorporates both area and the distance matrix and is frequently used 
+# as a metric of patch isolation (Gustafson and Parker 1992, 1994). 
+# This metric shares some similarity with metapopulation metrics for patch isolation 
+# (see Chap. 10). Note that some formulations of this metric, like that described above, 
+# only consider distances from the focal patch to all other patches in the neighborhood 
+# while others consider distances/linkages between non-focal patches within the neighborhood 
+# as well. We can calculate the proximity index by first creating a vector of patch area. 
+# Then we need to alter the distance matrix to only consider patches within a neighborhood 
+# of the patch, say 1000 m. Finally, we divide area by the distance with the sweep function 
+# and sum across all j patches to quantify the proximity index for patch i:
+
+#patch area
+patch.area <- data.frame(id=for.pstat$patchID, area=for.pstat$area)
+#neighborhood for proximity index to be calculated
+h <- edge.dist
+h2 <- 1 / h^2
+h2[edge.dist>1000] <- 0
+diag(h2) <- 0
+#calculate proximity index
+patch.prox <- rowSums(sweep(h2, 2, patch.area$area, "*"))
+
+# Note that in this approach, we do not want the diagonal of the distance matrix to be NA. 
+# Rather, we use the h2 matrix as an indicator matrix for only summing elements where 
+# distances are <1000 (not including the diagonal). With these results, we find that the 
+# patch proximity metric is weakly correlated with both patch area (r = 0.09) and nearest 
+# neighbor distance based on edge–edge distances (r = −0.16).
