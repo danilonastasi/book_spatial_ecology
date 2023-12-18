@@ -29,6 +29,11 @@
 
 
 # let's start with the code:
+
+##### we need some objects we created in the code 2.3.4_paragraph.R #####
+##### let's run the R code 2.3.4_paragraph.R totally #####
+
+
 library(raster)
 # install.packages("SDMTools") # package not available for this version of R anymore
 # library(SDMTools) # we can't use this package
@@ -198,15 +203,47 @@ hist(log(for.pstat$area))
 # To calculate class-based metrics, we use the ClassStat function from SDMTools in a 
 # similar way as we calculated patch-based metrics:
 
-##### we need the object "forest" we created in the code 2.3.4_paragraph.R #####
-##### let's run in R the code until creating the object, row: 127
-
 #calculation based on forest layer
 for.cstat <- ClassStat(nlcd.forest, cellsize = res(forest)[[1]])
 #calculation based on nlcd layer (all land-cover types)
 nlcd.cstat <- ClassStat(nlcd, cellsize = res(nlcd)[[1]])
 
+# When looking over these metrics, several metrics provided are summary statistics 
+# for patch-level metrics (e.g., mean, minimum, maximum, and standard deviation of 
+# patch size), while others are unique to pattern at the class level (Table 3.3). 
+# Looking at the correlations of these metrics across classes in the landscape can help 
+# interpret the extent to which metrics are capturing similar elements of class-level 
+# structure (Fig. 3.8).
 
+# We can check that these metrics are consistent with calculations based on the data 
+# frame provided with the PatchStat function:
 
+#mean patch size
+for.cstat[for.cstat$class == 1, "mean.patch.area"]
+for.pstat.mean["area"]
 
+#standard deviation of patch shape
+for.cstat[for.cstat$class == 1, "sd.shape.index"]
+for.pstat.sd["shape.index"]
+
+# The above calculations illustrate how some class-level metrics can be derived directly 
+# from patch-level metrics. In summary, the SDMTools package provides several metrics 
+# for quantifying land-cover patterns at the patch and class-level, similar to the 
+# popular program Fragstats (McGarigal et al. 2002).
+
+# While SDMTools does not calculate core area and isolation metrics, such metrics can be 
+# calculated in a straightforward way using other packages in R. First, consider the 
+# calculating core areas based on a distance of 100 m. To approach this problem, we 
+# convert our raster map to a vector map with the rasterToPolygons function and then 
+# buffer within patch polygons using the rgeos package (Fig. 3.9a):
+
+#create polygon layer
+
+#### we need the archived package rgeos ####
+# install.packages("https://cran.r-project.org/src/contrib/Archive/rgeos/rgeos_0.6-4.tar.gz")
+library(rgeos)
+forest.poly <- rasterToPolygons(forest.patchID, dissolve = T) # it works also without rgeos package
+#create core polygons and calculate their area
+core.poly <- gBuffer(forest.poly, width = -100, byid = T) 
+core.area <- gArea(core.poly, byid = T)
 
