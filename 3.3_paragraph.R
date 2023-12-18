@@ -198,10 +198,15 @@ hist(log(for.pstat$area))
 # To calculate class-based metrics, we use the ClassStat function from SDMTools in a 
 # similar way as we calculated patch-based metrics:
 
+##### we need the object "forest" we created in the code 2.3.4_paragraph.R #####
+##### let's run in R the code until creating the object, row: 127
+
 #calculation based on forest layer
 for.cstat <- ClassStat(nlcd.forest, cellsize = res(forest)[[1]])
 #calculation based on nlcd layer (all land-cover types)
 nlcd.cstat <- ClassStat(nlcd, cellsize = res(nlcd)[[1]])
+
+
 
 
 
