@@ -423,17 +423,17 @@ N <- table(nlcd[adj[,1]], nlcd[adj[,2]])
 # calculating contagion using the formula of Riitters et al. (1996) is:
 
 contagion <- function(r){
- adj <- adjacent(r, 1:ncell(r), directions = 4)
- Nij <- table(r[adj[,1]], r[adj[,2]])
- Nij <- unclass(Nij) #convert table format to matrix format
- Ni <- rowSums(Nij)
- Pj_i <- as.matrix(Nij / Ni)
- Pi <- as.vector(unclass(table(values(r))) / ncell(r))
- Pij <- Pi * Pj_i
- n <- length(Pi)
- #Ritters et al. 1996 formula
- contagion <- 1 + sum(Pij * log(Pij),na.rm = T)/(log(n^2 + n) - log(2))
- return(contagion)
+  adj <- adjacent(r, 1:ncell(r), directions = 4)
+  Nij <- table(r[adj[,1]], r[adj[,2]])
+  Nij <- unclass(Nij) #convert table format to matrix format
+  Ni <- rowSums(Nij)
+  Pj_i <- as.matrix(Nij / Ni)
+  Pi <- as.vector(unclass(table(values(r))) / ncell(r))
+  Pij <- Pi * Pj_i
+  n <- length(Pi)
+  #Ritters et al. 1996 formula
+  contagion <- 1 + sum(Pij * log(Pij),na.rm = T)/(log(n^2 + n) - log(2))
+  return(contagion)
 }
 
 # The above function breaks the steps of calculating contagion into its parts. We first 
@@ -451,11 +451,11 @@ contagion <- function(r){
 # This metric can be calculated in R with the following function:
 
 PLADJ <- function(r){
- adj <- adjacent(r, 1:ncell(r), directions = 4)
- Nij <- table(r[adj[,1]], r[adj[,2]])
- Nij <- unclass(Nij)
- PLADJ <- sum(diag(Nij)) / sum(Nij) * 100
- return(PLADJ)
+  adj <- adjacent(r, 1:ncell(r), directions = 4)
+  Nij <- table(r[adj[,1]], r[adj[,2]])
+  Nij <- unclass(Nij)
+  PLADJ <- sum(diag(Nij)) / sum(Nij) * 100
+  return(PLADJ)
 }
 
 # To provide context for these landscape-level metrics, we contrast the landscape used so 
@@ -488,4 +488,99 @@ PLADJ <- function(r){
 #####        paragraph 3.3.3.4      #####
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
+
+# Each of the above approaches is often applied to replicated landscapes. In Chap. 2, for 
+# example, we calculated the proportion of forest cover surrounding different locations 
+# (a “patch-landscape,” or “focal-patch” sampling design) (Fahrig 2003). Another approach 
+# to landscape quantification is using a moving-window analysis, which is akin to a 
+# “neighborhood” analysis and loosely captures some ideas of an “ecological neighborhood” 
+# (Addicott et al. 1987).
+
+# In a moving window analysis, for each pixel on a map we quantify land cover in a 
+# surrounding neighborhood. The result is a new map that visualizes the neighborhood 
+# variation in land-cover properties. These maps can then be used for sampling or for 
+# making predictive maps, such as maps of predicted species distribution (see Chap. 7).
+
+# The raster package provides a means to implement a moving-window analysis in a 
+# straightforward way with the focal function. Moving windows can be based on different 
+# shaped windows, such as rectangles or circles . We first create a weight matrix with 
+# the focalWeight function that defines the window size and shape:
+
+#focal buffer matrix for moving windows
+buffer.radius <- 100
+fw.100m <- focalWeight(nlcd, buffer.radius, type = 'circle')
+#re-scale weight matrix to 1/0 for calculations
+fw.100m <- ifelse(fw.100m > 0, 1, 0)
+fw.100m
+
+# This is a square matrix where a circle is approximated based on the radius considered. 
+# Note that the cells in this matrix reflect the grain of the map being considered and 
+# raster creates the size of the matrix to match the length of the radius/grain. The 
+# focalWeight function can also be used to consider Gaussian kernels, as discussed in 
+# Chap. 2, by specifying type = 'Gauss' and setting the value for sigma 
+# (the smoothing parameter; see Fig. 2.​10). For example, a Gaussian kernel with 
+# sigma = 50 would be quantified as:
+
+focalWeight(nlcd, c(50, 100), type = 'Gauss')
+
+# Here, the two numbers for d reflect sigma and the window size to be considered 
+# (100 m; same as above). The use of a Gaussian kernel allows for the weighting scheme 
+# to decline with distance (Fig. 2.​10).
+
+With this weight matrix, we can then use the focal function to run a moving window 
+# analysis. For each pixel, this function will multiple the focalWeight matrix by the 
+# raster. If the matrix is a series of 0’s and 1’s, in effect this will mask all values 
+# outside the neighborhood (by multiplying those values by 0).
+
+We illustrate two examples. First, we calculate the proportion of forest cover surrounding 
+# each pixel . To do so, we use the sum function to sum the total forest cover within 
+# each window (Fig. 3.11). Note that below we illustrate this process in a couple of 
+# steps for clarity, but it could be streamlined by using a weighted average instead 
+# (see Chap. 2). Second, we can call our own defined functions of land-cover pattern. 
+# Here, we call our own function to calculate land-cover richness in surrounding each pixel 
+# to illustrate.
+
+#forest cover moving window; number of cells
+forest.100m <- focal(nlcd.forest, w = fw.100m, fun = "sum", na.rm=T)
+#proportion
+forest.prop.100m <- forest.100m / sum(fw.100m)
+#richness moving window
+richness.100m <- focal(nlcd, fw.100m, fun = richness)
+
+# Some metrics at the neighborhood scale can be more difficult to calculate in an 
+# efficient way. For instance, calculating Shannon’s diversity is less straightforward, 
+# because the calculation described above would take too long (the table function used in 
+# the above description is relatively slow). A much quicker way is to create individual 
+# maps that describe the proportion of each land cover category with a moving window and 
+# then use raster algebra across maps to derive a new map of diversity at the neighborhood 
+# scale. A function to accomplish this for Shannon’s diversity is:
+
+diversity <- function(landcover, radius) {
+  n <- length(unique(landcover))
+  #Create focal weights matrix
+  fw.i <- focalWeight(landcover, radius, "circle")
+  #create new layer for diversity
+  D <- landcover
+  values(D) <- 0
+  #function for log(p)*p
+  log.i <- function(x) ifelse(x == 0, 0, x * log(x))
+  #for each landcover category, create a moving window map and sum
+  for (i in 1:length(n)) {
+    focal.i <- focal(landcover == i, fw.i)
+    D <- D + calc(focal.i, log.i)
+    }
+  D <- D * -1
+  return(D)
+}
+
+diversity.100m <- diversity(landcover = nlcd, radius = 100)
+
+# Overall, if we contrast this diversity map to that of land-cover richness , we find 
+# that these two metrics across the landscape are weakly correlated (r = 0.24).
+
+
+#####        paragraph 3.3.3.5      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
 
