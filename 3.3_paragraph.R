@@ -583,4 +583,156 @@ diversity.100m <- diversity(landcover = nlcd, radius = 100)
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
+# Landscape and spatial ecologists frequently generate random or neutral landscapes to 
+# represent land-cover variation (Gardner et al. 1987; O'Neill et al. 1992; Neel et al. 2004; 
+# Etherington et al. 2015). These landscapes vary in the degree of complexity 
+# (Pe’er et al. 2013; Etherington et al. 2015). The application of these maps also varies 
+# considerably (With 1997; With and King 1997). Some map representations aim to capture a 
+# minimal amount of pattern and process to provide a “null” representation of landscapes 
+# (Gardner and Urban 2007).
+
+# The two most common landscape characteristics considered are: (1) the proportion of 
+# habitat or class of land-cover, p; and (2) the degree to which it is aggregated (or 
+# conversely, fragmented). Most approaches focus on a binary representation of the 
+# landscape (e.g., habitat v non-habitat), but some approaches extend this to several 
+# land-cover types (Saura and Martinez-Millan 2000).
+
+# We start with the simplest representation of a neutral landscape, sometimes referred to 
+# as a “simple random” landscape (Gardner et al. 1987). In this model, the only parameter 
+# considered is p. We can simulate a neutral landscape by making independent, random draws 
+# from probability distributions for each cell or pixel on the landscape. Frequently, 
+# either a uniform distribution is used (U~(0,1)), or a Bernoulli distribution is used 
+# (Binomial~(p, 1)). For the uniform distribution, if the draw is less than p, the cell 
+# is marked as habitat and non-habitat otherwise. A Bernoulli distribution is a type of 
+# binomial distribution, where only one “trial” is considered. It is often the distribution 
+# used when describing a (weighted) coin toss. Here we illustrate the use of the Bernoulli 
+# distribution (Fig. 3.12).
+
+#landscape dimensions
+dimX <- 128
+dimY <- 128
+#simple random with 30% habitat
+sr.30 <- raster(ncol = dimX, nrow = dimY, xmn = 0, xmx = dimX, ymn = 0, ymx = dimY)
+sr.30[] <- rbinom(ncell(sr.30), prob = 0.3, size = 1)
+#simple random with 10% habitat
+sr.10 <- raster(ncol = dimX, nrow = dimY, xmn = 0, xmx = dimX, ymn = 0, ymx = dimY)
+sr.10[] <- rbinom(ncell(sr.10), prob=0.1, size=1)
+
+# Using a Bernoulli distribution is useful in the sense that it is an appropriate 
+# probability distribution for binary outcomes; however, it does not guarantee that a 
+# random landscape will have exactly p proportion of the landscape as habitat 
+# (or land cover). A uniform distribution provides more precision in this way because a 
+# quantile can be taken from the realizations of the uniform distribution across the map 
+# (see below). Overall, simple random landscapes are a useful starting point, but the 
+# patterns generated from these approaches are not similar to real-world patterns. 
+# Instead, they tend to generate patterns that resemble static white noise from old 
+# television sets.
+
+# Other common approaches that incorporate aggregation in addition to simply the amount 
+# of habitat include the use of Gaussian random fields (see Chap. 5), fractional Brownian
+# motion (or fractal landscapes), and the use of various clustering algorithms 
+# (Keitt 2000; Saura and Martinez-Millan 2000; Chipperfield et al. 2011; Remmel and 
+# Fortin 2013). Gaussian random fields models use parameters that describe spatial 
+# dependence (from geostatistics; Chap. 5) to make predictions across a region of interest. 
+# These models are formally related to fractal models that have been widely used in ecology 
+# (Keitt 2000). We will illustrate these in Chap. 5 once spatial dependence is formally 
+# introduced.
+
+# Neutral models based on fractal algorithms have been widely applied in spatial ecology. 
+# The reason is that the degree of aggregation of habitat and the amount of habitat can be 
+# precisely and independently controlled. For most of these applications, the “mid-point 
+# displacement” algorithm has been used to generate fractal landscapes 
+# (Saupe 1988, p. 83–85). This is a relatively simple, recursive algorithm that takes 
+# square maps of power 2 (e.g., 32, 64, 128 cells in a linear dimension) and with each 
+# recursive partition , it breaks the line at its midpoint, adding some noise to the 
+# value at newly created point based on the degree of aggregation, H, termed the Hurst 
+# exponent. H is related to the fractal dimension (the precise relationship depends on 
+# the dimensions being considered, that is, 1D, 2D, or 3D). H ranges between 0 and 1; 
+# as H approaches 1, the map is highly aggregated (a high degree of spatial autocorrelation; 
+# see Chap. 5) , while as H approaches 0, the map becomes much more fragmented, resembling 
+# a simple random map described above.
+
+# Fractal-like landscapes can be generated with a few different packages in R, including 
+# the RandomFields, FieldSim , NLMR, and Voss packages (Shitov and Moskalev 2005; 
+# Brouste et al. 2007; Schlather et al. 2015; Sciaini et al. 2018). We note that at the 
+# time of publication, the NLMR package was released, which offers a means to contrast 
+# several types of neutral landscapes with one R package, including the use of the 
+# midpoint displacement algorithm (Sciaini et al. 2018). Here, we illustrate the general 
+# idea with the fractal Brownian function, Voss2d, in the Voss package. This package uses 
+# a recursive method described by Voss (1985). This method is similar to the midpoint 
+# displacement algorithm where successive random additions of Gaussian noise, except 
+# that all of the points are modified with each recursive step and not just the newly 
+# created points, as in the midpoint displacement algorithm (Saupe 1988). For this package, 
+# we specify H and g, which specifies the dimensions of the landscape (2g × 2g). These 
+# types of models will create a continuous, rugged surface that we then slice through to 
+# create a binary map of habitat/non-habitat for a given p.
+
+# install.packages("Voss")
+library(Voss)
+voss <- voss2d(g = 7, H = 0.7)
+str(voss)
+
+# The object created is a list with x–y coordinates and the value of the terrain, z, 
+# which defaults to being centered at 0. We can then create a binary representation of 
+# this map by quantifying the quantiles of the values generated and then truncating the 
+# fractal map based on p. Below we create maps for 10% and 30% habitat (Fig. 3.10).
+
+#identify threshold
+voss1.thres <- quantile(voss$z, prob = 0.1)
+voss3.thres <- quantile(voss$z, prob = 0.3)
+#truncate
+voss$z1 <- ifelse(voss$z < voss1.thres, 1, 0)
+voss$z3 <- ifelse(voss$z < voss3.thres, 1, 0)
+
+# Note that these maps can potentially be discretized into >2 categories, which has been 
+# used to reflect spatial variation in environmental gradients and habitat quality 
+# (With 1997).
+
+# An alternative approach to fractal landscapes is the modified random clusters (MRC) 
+# algorithm (Saura and Martinez-Millan 2000). This algorithm uses a series of successive 
+# steps to generate clustered land-cover. First, a simple random map is generated, 
+# similar to that described above. Second, clusters are determined, which is functionally 
+# identical to a four-neighbor patch delineation rule described earlier (Fig. 3.4). Third, 
+# clusters are assigned to the focal land-cover type being considered, based on an expected 
+# total proportional area, A, assigned for one land-cover type (e.g., forest). Note that 
+# “expected” is used here, because in practice, this expectation may not be possible, 
+# depending on the cluster size distribution of the map. Finally, the remaining land-cover 
+# types are filled in using the same steps. This function uses two parameters: p and A. 
+# In this setting, p controls the degree of fragmentation (p does not have the same meaning 
+# as used above!): it is highly non-linear and related to the “percolation threshold” in 
+# simple random neutral landscapes (Gardner et al. 1987). The percolation threshold is the 
+# point at which habitat becomes fully connected on a landscape, such that there is one 
+# cluster: for a simple random landscape, like that described above, it is 
+# approximately 0.59 (Gardner et al. 1987). Because the MRC algorithm focuses on cluster 
+# assignment from a simple random mapping process (steps 1 and 2 above), it is sensitive 
+# to this percolation threshold. That is not necessarily a problem, but it means that most 
+# of the interesting variability in pattern generated from this algorithm occurs when p is 
+# close to the percolation threshold. It also means that near or above this threshold, it is 
+# likely not possible to generate landscapes where the observed A matches the expected A we 
+# are attempting to capture.
+
+# A basic form of this model can be implemented in the secr package (Efford 2018) with the 
+# randomHabitat function. We will illustrate the use of this function by focusing on 
+# examples shown in Saura and Martinez-Millan (2000). We first create a “mask,” 
+# which is simply the extent or shape of the area of interest (note we could also create a 
+# mask in this package using an irregular polygon). We then provide values of p and A to 
+# generate the random maps.
+
+# install.packages("secr")
+library(secr)
+tempmask <- make.mask(nx = dimX, ny = dimX, spacing = 1)
+p55A3 <- randomHabitat(tempmask, p = 0.58, A = 0.3)
+p55A1 <- randomHabitat(tempmask, p = 0.55, A = 0.1)
+plot(p55A3, dots = FALSE, col = "green")
+
+# Taken together, the wide variety of neutral landscape maps that have been developed 
+# provide a means of interpreting spatial pattern under conditions of limited biological 
+# process. These types of maps have been used to address a wide variety of issues and 
+# several generalizable insights have emerged from them (Turner and Gardner 2015). For 
+# example, these types of models have illustrated that the extent of the landscape under 
+# consideration can greatly affect pattern metrics due to the truncation of extents. 
+# Neutral models have revealed potential thresholds in connectivity and how connectivity 
+# of habitats can vary greatly with habitat amount (see Chap. 9). Neutral landscapes have 
+# also been used to interpret whether observed land-cover patterns are potentially 
+# significant (Remmel and Fortin 2013, 2017).
 
