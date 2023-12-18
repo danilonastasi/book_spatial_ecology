@@ -75,7 +75,7 @@ levelplot(nlcd, col.regions = land_col, xlab = "", ylab = "")  # we associate th
 ##### I got problems with levelplot function, I fixed them but I did not undertand how ####
 
 
-#####        paragraph 3.3.3 .1      #####
+#####        paragraph 3.3.3.1      #####
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
@@ -136,9 +136,72 @@ plot(forest.patchID)
 #### downloading the version SDMTools_1.1-221.2.tar.gz 
 #### and installing it
 
+###### Important: read the file DESCRIPTION in the zip file and check if 
+###### the package needs other packages before installation.
+###### The version SDMTools_1.1-221.2.tar.gz is the one it works for my System and R
+
 # install.packages("C:/Users/danil/Downloads/SDMTools_1.1-221.2.tar.gz")
-###### reading the file DESCRIPTION in the zip file I installed before the Imports and Suggest packages
 library(SDMTools)
 for.pstat <- PatchStat(forest.patchID, cellsize = res(nlcd.forest)[[1]])
+# In this function, we pass the length of cells into the cellsize argument to allow for 
+# proper calculation of area and length measurements. These calculations are in the units 
+# passed to the function; for instance, in the above code, we pass cellsize based on 
+# meters, such that area is in m2 and edge is in m. This function automatically calculates 
+# many patch-based metrics (Table 3.2) and returns a data frame, where each row is a patch 
+# and each column is a metric.
+
 names(for.pstat)
+
+# Summaries of patch metrics can be derived using functions on the data frame. For example, 
+# we calculate the number of patches on the map, mean of patch metrics and the standard 
+# deviation (SD) of those metrics with simple R commands:
+
+#number of patches
+nrow(for.pstat)
+
+#mean patch metrics
+for.pstat.mean <- colMeans(for.pstat[,2:ncol(for.pstat)])
+
+#SD of patch metrics
+for.pstat.sd <- apply(for.pstat[,2:ncol(for.pstat)], 2, sd)
+
+# The apply function is very flexible in this way. Here it applies functions to the columns 
+# of the data based on the second argument in the function (2; note for applying 
+# calculations on rows of the data, one would pass 1). Similarly, we can visualize the 
+# variation or heterogeneity in metrics, such as the log of patch area. Patch area is often 
+# transformed to a log scale for practical reasons: biologically, we expect a change in 
+# 10 ha to be more important when contrasting a 5 ha to a 15 ha patch than when contrasting 
+# a 1000 ha to 1010 ha patch. For example, a histogram of the distribution of patch areas 
+# is straightforward to implement (Fig. 3.6b).
+
+hist(log(for.pstat$area))
+
+# While each of these patch-level metrics captures subtly different aspects of patch 
+# structure, many of these metrics are highly correlated (Fig. 3.7). Note that some 
+# summaries of patch metrics are also provided when doing a class-level analysis.
+
+
+#####        paragraph 3.3.3.2      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+# We can also easily quantify patterns of land cover at the class-level. In this case, 
+# we can focus on metrics that do not require delineating patches, such as forest area, 
+# or we can get summary, patch-based metrics for the entire landscape (such as the 
+# standard deviation of patch sizes, as shown above). In any class-level metric, 
+# the metrics describe a focal land-cover class and most do not explicitly account for 
+# other land-cover types (see landscape-level metrics below). Some exceptions include 
+# class-level metrics that focus on edge contrast and interspersion, both of which account 
+# for variation in other land-cover types to quantify pattern of a focal land-cover type 
+# (see below).
+
+# To calculate class-based metrics, we use the ClassStat function from SDMTools in a 
+# similar way as we calculated patch-based metrics:
+
+#calculation based on forest layer
+for.cstat <- ClassStat(nlcd.forest, cellsize = res(forest)[[1]])
+#calculation based on nlcd layer (all land-cover types)
+nlcd.cstat <- ClassStat(nlcd, cellsize = res(nlcd)[[1]])
+
+
 
