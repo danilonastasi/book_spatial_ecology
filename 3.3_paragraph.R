@@ -323,3 +323,169 @@ patch.prox <- rowSums(sweep(h2, 2, patch.area$area, "*"))
 # distances are <1000 (not including the diagonal). With these results, we find that the 
 # patch proximity metric is weakly correlated with both patch area (r = 0.09) and nearest 
 # neighbor distance based on edge–edge distances (r = −0.16).
+
+
+#####        paragraph 3.3.3.3      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+# Landscape-level metrics are not considered in SDMTools , unfortunately. Here we provide 
+# code for some prominent landscape-level metrics (Table 3.4). Some common landscape-level 
+# metrics can be gleaned from summaries of class-level metrics in SDMTools, whereas others 
+# require writing new functions . We illustrate both approaches below.
+
+# Landscape metrics that can readily be derived from class-level metrics include the number 
+# of patches (NP), patch density (PD), largest patch index (LPI), total edge (TE), edge 
+# density (ED), and aggregation index (AI). At the landscape-level, these metrics are 
+# typically summing values for class-level metrics (e.g., NP, PD, TE), or taking the 
+# maximum value (LPI). Some examples include:
+
+land.NP <- sum(nlcd.cstat$n.patches)
+land.PD <- sum(nlcd.cstat$patch.density)
+land.LPI <- max(nlcd.cstat$largest.patch.index)
+land.TE <- sum(nlcd.cstat$total.edge)/ 2
+land.ED <- sum(nlcd.cstat$edge.density)/ 2
+land.AI <- sum(nlcd.cstat$prop.landscape * nlcd.cstat$aggregation.index)
+
+# Here, we divide the edge metrics by 2 because each edge segment will be counted twice 
+# when summing across class-level metrics (i.e., an edge will be counted once for each 
+# land-cover type in the adjacency). Also, the aggregation index is simply a weighted 
+# mean of the class-level metrics for aggregation. Note that SDMTools scales some of 
+# these metrics in a slightly different way than the Fragstats program when considering 
+# area/length, where SDMTools uses the square of the units provided in the layer (e.g., m2), 
+# while Fragstats uses hectares (ha).
+
+# Land-cover richness and diversity are frequently considered. Land-cover richness is 
+# simply the number of land-cover types in an area of interest. So, if we are only 
+# interested in one or a few landscapes, then this is straightforward to calculate 
+# with simple output from the raster package (or with output from SDMTools) . For example, 
+# we can calculate land cover richness for our landscape as:
+
+richness <- length(unique(values(nlcd)))
+
+# If we would like to calculate land-cover richness repeatedly for neighborhood, 
+# like when using a moving window analysis (see below), we can create a function 
+# to call for each neighborhood, x, such as:
+
+richness <- function(x) (length(unique(na.omit(x))))
+                           
+# Shannon’s diversity , D, and evenness , E, indices are other popular measures, 
+# defined as:   D ...... and E.......
+
+# For an entire landscape, it is straightforward to calculate D and E using output 
+# from the table function.          
+
+table(values(nlcd)))
+# This function returns the number of cells for each land-cover type on the map. 
+We can then use this information to calculate diversity and evenness:
+
+C <- table(values(nlcd))
+P <- C / sum(C)
+D <- -sum(P * log(P))
+E <- D / log(length(C))
+
+# Note that in R, log defaults to calculating the natural log (i.e., ln(x)).
+
+Other landscape-level metrics that require new functions for their quantification 
+# (i.e., they cannot appropriately be summarized from class-level metrics) focus 
+# primarily on aggregation-related metrics. Aggregation-related metrics can capture 
+# several related concepts, including dispersion and interspersion. Dispersion indices 
+# focus on spatial mixing of a class type (ignoring other class types), while interspersion 
+# metrics focus on spatial mixing of different class types (ignoring dispersion of a 
+# specific class type) (Table 3.1). One prominent metric is contagion, which is an 
+# intuitive, landscape-level metric that captures both dispersion and interspersion. 
+# Contagion has been quantified in subtly different ways. A common formulation of 
+# contagion is (Li and Reynolds 1993, Riitters et al. 1996): Contagion .......
+
+# For this metric, we multiply the probability of a land-cover type by the conditional 
+# probability of that type being adjacent to a different land-cover type j and then sum 
+# this expression. Note the similarity of the contagion index to that of Shannon’s Evenness 
+# index , E. The matrix N taken from the elements Nij is a commonly used summary statistic 
+# in several landscape-level metrics (Turner and Gardner 2015). Some other relevant 
+# measures that can be derived from N include the percentage of like adjacencies and the 
+# aggregation index (Table 3.4). Note that calculating N requires using a patch-definition 
+# rule (e.g., Fragstats uses a four-neighbor rule).
+
+# One way to calculate this measure is to take advantage of the adjacent function in the 
+# raster package to calculate Nij:
+
+#identify adjacent cells
+adj <- adjacent(nlcd, 1:ncell(nlcd), directions = 4, pairs = T, include = T)
+head(adj, 2)
+# This function identifies all of the pairwise combinations of adjacencies on the map, 
+# including like adjacencies (i.e., two cells of the same land-cover type) with the term 
+# include = T. This information can be summarized to get N with the table function, 
+# which counts the values on the nlcd map based on the identified adjacencies:
+
+N <- table(nlcd[adj[,1]], nlcd[adj[,2]])
+
+# From there, the remaining terms are straightforward to calculate. A function for 
+# calculating contagion using the formula of Riitters et al. (1996) is:
+
+contagion <- function(r){
+ adj <- adjacent(r, 1:ncell(r), directions = 4)
+ Nij <- table(r[adj[,1]], r[adj[,2]])
+ Nij <- unclass(Nij) #convert table format to matrix format
+ Ni <- rowSums(Nij)
+ Pj_i <- as.matrix(Nij / Ni)
+ Pi <- as.vector(unclass(table(values(r))) / ncell(r))
+ Pij <- Pi * Pj_i
+ n <- length(Pi)
+ #Ritters et al. 1996 formula
+ contagion <- 1 + sum(Pij * log(Pij),na.rm = T)/(log(n^2 + n) - log(2))
+ return(contagion)
+}
+
+# The above function breaks the steps of calculating contagion into its parts. We first 
+# calculate the Nij. Note that a rate-limiting step here is the construction of N using the 
+# table function. Scaling this function to larger landscapes would require using faster 
+# alternatives, such as the data.table function. Then Pi and Pj/i are calculated. 
+# Finally, we put this together using the approach of Riitters et al. (1996), wherein a 
+# slight modification of the denominator is used in calculating contagion.
+
+# The general approach for calculating Nij can be used to also calculate the percentage of 
+# like adjacencies, PLADJ, at the landscape-level. This metric quantifies the degree of 
+# dispersion of land-cover types. As this metric gets larger, the land-cover types are 
+# more aggregated. It is defined as:  PLADJ
+
+# This metric can be calculated in R with the following function:
+
+PLADJ <- function(r){
+ adj <- adjacent(r, 1:ncell(r), directions = 4)
+ Nij <- table(r[adj[,1]], r[adj[,2]])
+ Nij <- unclass(Nij)
+ PLADJ <- sum(diag(Nij)) / sum(Nij) * 100
+ return(PLADJ)
+}
+
+# To provide context for these landscape-level metrics, we contrast the landscape used so 
+# far (Fig. 3.4) with two other landscapes that were sampled in Chap. 2 (Fig. 3.10). For 
+# each landscape, we apply these functions to interpret landscape-level variation. One 
+# landscape is dominated by forest (Fig. 3.10b), whereas the other appears to be highly 
+# fragmented (Fig. 3.10c). It is notable that the forest-dominated landscape has generally 
+# similar landscape-level metric values to our original landscape except those related to 
+# landscape diversity and evenness. This similarity is driven by the fact that non-forest 
+# land cover is generally configured in small patches with a large proportion of edge. The 
+# landscape that appears fragmented (Fig. 3.10c) does have more patches, more edge, and 
+# less aggregation than the other landscapes. Note that these numbers can vary subtly 
+# with other programs, such as Fragstats, based largely on the underlying assumptions of 
+# the calculations (patch delineation rules, how boundaries are considered, etc.).
+
+# Taken together, these analyses illustrate how several landscape-level metrics can be 
+# calculated in R. It also illustrates how the use of landscape-level metrics can sometimes 
+# be more difficult to interpret than for patch or class-level metrics, because typically 
+# landscape-level metrics are pooling or summarizing information across all land-cover 
+# types on the map (compare metrics for landscapes a and b in Fig. 3.10). This pooling 
+# makes the metrics more difficult to interpret biologically than with other types of 
+# metrics. Nonetheless, in some situations, we expect biologically that landscape-level 
+# metrics should better describe key issues of relevance to biodiversity, such as questions 
+# regarding the role of landscape heterogeneity in agricultural landscapes 
+# (Fahrig et al. 2011; Reynolds et al. 2018), and the importance of “countryside” 
+# biogeography (Brosi et al. 2008; Mendenhall et al. 2014), where interest lies in 
+# understanding the value of biodiversity across human dominated land uses.
+
+
+#####        paragraph 3.3.3.4      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
