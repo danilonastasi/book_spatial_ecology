@@ -5,7 +5,7 @@
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
-#####    code tested on _________   #####
+#####    code tested on 12/18/2023   #####
 
 # We will start with some simple examples using the raster package (for raster data) 
 # (Hijmans and Van Etten 2012) and the rgeos package (for vector-based data) 
