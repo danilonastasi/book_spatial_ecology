@@ -5,7 +5,7 @@
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
-#####    code tested on _________   #####
+#####    code tested on 12/20/2023   #####
 
 # In R, there are a few libraries that can be used for spatial point pattern analysis. 
 # Spatial (Venables and Ripley 2002) allows for limited point-pattern analysis, whereas 
@@ -558,9 +558,32 @@ plot(pp2.sim)
 plot(pp2.sim.fun)
 
 
-#####        paragraph 4.4.1      #####
+#####        paragraph 4.5      #####
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
+
+# The analysis of spatial point patterns has rapidly emerged as a frontier in spatial 
+# ecology. There have been several developments in this field over the past 15 years. 
+# With this increase in methods, there are now a variety of ways to approach the problem 
+# of spatial point pattern analysis (Wiegand and Moloney 2014; Velazquez et al. 2016).
+
+# Several issues should be considered when conducting spatial point pattern analysis 
+# (Velazquez et al. 2016). First, it is often useful to consider more than one 
+# second-order statistic. Each of the statistics we considered (K, L, g, G) captures 
+# different elements of spatial point patterns, such that they provide complementary 
+# information. In most situations, analyses should adjust for edge (boundary) effects. 
+# The potential for inhomogeneous point patterns needs to also be considered in most 
+# situations. Finally, the use of pointwise envelopes should be treated carefully and 
+# the use of global envelopes should be considered (Baddeley et al. 2014; 
+# Wiegand et al. 2016).
+
+# While much of the ecological work on spatial point pattern analysis has focused on 
+# patterns of plant distributions, there are also several opportunities to apply these 
+# approaches to answer critical questions in animal ecology (e.g., spatial patterns of 
+# nest predation) and conservation biology (e.g., the spatial scales of effects of point 
+# source pollution). We expect that the scope of spatial point pattern analysis will 
+# continue to increase in the coming years to help address ecological and conservation 
+# problems.
 
 
 
