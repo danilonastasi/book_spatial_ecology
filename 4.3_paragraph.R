@@ -114,16 +114,123 @@ quadrat.test(ppp.cactus, nx = 4, ny = 4,method = "Chisq")
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
+# Second-order point pattern analyses can readily be implemented in spatstat . Below 
+# illustrates Ripley’s K and the standardized L functions (Fig. 4.5), initially ignoring 
+# edge effects (correction="none").
+
+Knone <- Kest(ppp.cactus, correction = "none")
+plot(Knone)
+Lnone <- Lest(ppp.cactus, correction = "none")
+plot(Lnone) #standardized to a 1:1 expectation
+plot(Lnone, . - r ~ r) #standardized to a zero expectation
+
+# You will notice that for these functions, two lines are drawn. The “Lpois” line is a 
+# dashed line that represents the expected (theoretical) value based on a Poisson process 
+# (CSR). The way that spatstat calculates L is to linearize K such that the expected value 
+# is r (or the radius). The other solid line represents the estimated L (linearized K), 
+# when we ignore edge effects.
+
+# The above analysis ignores the problem of edge effects. spatstat provides a variety of 
+# edge corrections. We contrast an isotropic and translate correction for adjusting for 
+# boundary effects (Fig. 4.6). The isotropic correction uses a simple weighting scheme 
+# for the area sampled near the plot boundary (Ripley 1988), while the translate correction 
+# uses a toroidal shift. We adjust for potential boundary effects by typing:
+
+Liso <- Lest(ppp.cactus, correction = "isotropic")
+plot(Liso, . - r~r)
+Ltrans <- Lest(ppp.cactus, correction = "translate")
+plot(Ltrans, . - r ~ r)
+
+# When comparing the L function that ignores boundaries to those above that account for 
+# boundaries, notice that patterns change at larger distances—we expect that the L function 
+# at larger distances should potentially be more biased than at smaller distances 
+# (because larger radii will naturally overlap more with the boundary of the study area). 
+# When we ignore edge effects, we are in effect counting fewer points within the radius r 
+# near the boundary, so the observed value for L or K should have an artifact of decreasing 
+# as r increases.
+
+# The analyses so far are exploratory. While the observed statistics (K, L) appear 
+# different than the expectation, it is unclear if these are substantially 
+# (or significantly) different. To conduct formal inference regarding if the point pattern 
+# follows CSR, we can use Monte Carlo simulations to calculate a confidence envelope under 
+# CSR with the envelope function. This function can be applied to several point pattern 
+# statistics.
+
+Lcsr <- envelope(ppp.cactus, Lest, nsim = 99, rank = 1, 
+                 correction = "translate", global = FALSE)
+plot(Lcsr, . - r ~ r, shade=c("hi", "lo"), legend = F)
+
+# In the envelope function, rank specifies the alpha for the simulations. For a rank=1, 
+# the max and min are used for envelopes, such that for 99 simulations, α = 0.01 while 
+# for 19 simulations, α = 0.05. Also note that we used global = FALSE. This means that 
+# these are “pointwise envelopes.” These envelopes work better for L than K because of 
+# variance stabilizing properties.
+
+# Plots of pointwise envelopes show the stated upper and lower quantiles of simulated 
+# patterns for any distance r (Fig. 4.7). Because such analyses are calculating envelopes 
+# for many distances, pointwise envelopes with a specified α should not be used to reject 
+# a null model at that level (because of the multiple tests). Consequently, there are 
+# alternative global tests that can be used in this way. While global tests are under 
+# active development (Baddeley et al. 2014; Wiegand et al. 2016), spatstat does provide 
+# one option for a global test (using global = T in the above model). This approach 
+# estimates the maximum deviation from the Poisson point process across all r 
+# (i.e., D = max|K(r) − Kpois(r)|). This approach is referred to as a simultaneous 
+# envelope (or critical band) rather than a pointwise envelope (Fig. 4.7a). If the 
+# observed line falls outside the simultaneous envelope at any point on r, we would 
+# reject the null hypothesis.
+
+# Now, say we are more interested in estimating the distance at which spatial patterns 
+# arise, such that using a “ring” rather than a circle (as in Ripley’s K) is more 
+# appropriate. To estimate the pair correlation function, g, most of the arguments are 
+# similar to above. The main exception is that instead of calling Lest, we call pcf 
+# (pair correlation function; Fig. 4.7b):
+
+Ptrans <- pcf(ppp.cactus, correction = "translate")
+plot(Ptrans)
+Penv <- envelope(ppp.cactus, pcf, nsim = 99, rank = 1, 
+                 correction = "translate", global = FALSE)
+plot(Penv, shade = c("hi", "lo"), legend = FALSE)
+
+# The pcf function uses a smoothing kernel such that distance bins are not needed. The 
+# default bandwidth coefficient (related to sigma in a Gaussian kernel; see Chap. 2) for 
+# the smoothing kernel is set to 0.15 (Stoyan and Stoyan 1994). We can adjust the smoothing 
+# on the pair correlation function using the stoyan command in the pcf function. 
+# Increasing the value of the bandwidth coefficient (e.g., stoyan = 0.4) results in a less 
+# wiggly g function (Fig. 4.7b).
+
+# Finally, we can use similar arguments for the G-function to estimate the probability 
+# of finding a nearest neighbor as a function of distance (Fig. 4.7c). spatstat uses a 
+# similar approach as above with the Gest function. Note that for Gest, there are subtly 
+# different ways to account for edge effects relative to above. Below we use rs, the 
+# reduced sample correction. We can check the observed G-function calculated by spatstat 
+# to the cumulative distribution function of the empirical data (with the ecdf function):
+
+Gtrans <- Gest(ppp.cactus, correction = "rs")
+plot(Gtrans, legend = F)
+Genv <- envelope(ppp.cactus, Gest, nsim = 99, rank = 1, 
+                 correction = "rs", global = FALSE)
+plot(Genv, shade = c("hi", "lo"), legend = FALSE)
+#nearest neighbor distance for each point
+nn.dist <- nndist(ppp.cactus)
+plot(ecdf(nn.dist), add = T)  # in order to run this code we need the plot above in row 212
+
+# Note that the radius considered for the G-function is much smaller than for the 
+# L-function or the pair correlation function. This makes sense, because the nearest 
+# neighbor distances will emphasize the shortest distances between points.
+
+# Taken together, the analyses using the L, g, and G-functions provide complementary 
+# insights regarding the spatial pattern of Opuntia. Using pointwise envelopes, the 
+# L function suggests an aggregated pattern occurring at scales of approximately 2–13 m, 
+# while the pair correlation function suggests that most of the observed effect in the 
+# L function is generated from shorter distances, on the order of 2–6 m. Similarly, 
+# the G-function suggests that nearest neighbor distances are random at very small 
+# scales (<2 m), while distances are closer than expected at larger scales, consistent 
+# with aggregation.
 
 
-
-
-
-
-
-
-
-
+#####        paragraph 4.3.5      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
 
 
 
