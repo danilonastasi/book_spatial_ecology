@@ -232,6 +232,101 @@ plot(ecdf(nn.dist), add = T)  # in order to run this code we need the plot above
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
+# Many of the above univariate analyses can be extended to ask interesting and important 
+# questions based on marked point patterns. First, consider the issue of resource use 
+# versus availability in the context of marked point patterns (Lancaster and Downes 2004). 
+# There are several insect herbivores that use Opuntia cactus. We may be interested in 
+# interpreting the spatial dispersion of these herbivores. We want to know the distribution 
+# of herbivores, given the underlying distribution of cactus. For this and other 
+# complexities, such as interpreting spatial covariance between species, we need to use 
+# a marked point pattern analysis.
+
+# In this situation, we will interpret the spatial distribution of an insect herbivore, 
+# Chelinidea vittiger, on cactus. C. vittiger is a pest insect that has been used as a 
+# biological control for Opuntia cactus in Australia (although with limited effectiveness) 
+# (DeVol and Goeden 1973). It specializes on Opuntia, where it feeds and breeds on cactus 
+# segments. It is a poor disperser (Fletcher et al. 2011) and tends to show aggregated 
+# distribution patterns on cactus (Miller et al. 2013).
+
+# To interpret C. vittiger distribution, we can use a randomization procedure where we 
+# relabel marks (shuffle the locations of used versus unused cacti, termed 
+# “random labeling”) to interpret the observed pattern of the herbivore with the rlabel 
+# function. That is, we are interested in insect dispersion, conditional on cactus 
+# distribution. In other circumstances, we might be interested in the joint distribution 
+# of two marked processes (e.g., competition between two species). For such situations, 
+# we can use the rshift function in a similar way as using rlabel. Rather than shuffling 
+# labels, the rshift function performs a toroidal shift of the point pattern of one mark 
+# while leaving the other marked point pattern constant.
+
+# First, we need to make a new spatstat object that includes the marks for 
+# presence–absence data. In the data provided, there is information from six surveys 
+# conducted at each patch regarding the number of C. vittiger detected per patch. 
+# Here, we truncate the data to produce a bivariate mark of presence–absence of 
+# C. vittiger:
+
+cactus$CheliPA <-as.factor(ifelse(cactus$chelinidea > 0, "presence", "absence"))
+
+# With this new variable, CheliPA, we can create a new spatstat object:
+
+ppp.PA <- ppp(cactus$East, cactus$North, window = ppp.window, marks = cactus$CheliPA)
+split(ppp.PA) #summary statistics by mark
+plot(split(ppp.PA)) #separate plots
+
+# We first interpret the spatial pattern of C. vittiger distribution, ignoring the 
+# underlying distribution of cactus (Fig. 4.8a).
+
+cheli.data <- subset(cactus, chelinidea > 0)
+ppp.bug <- ppp(cheli.data$East, cheli.data$North, window = ppp.window)
+Lbug <- envelope(ppp.bug, Lest, nsim = 99, rank = 1, i = "presence", global = F)
+
+# Then, we contrast these results to those based on a bivariate K function (or a bivariate 
+# pair correlation function) with a random-labeling simulation to interpret the spatial 
+# pattern of marks (Fig. 4.8b).
+
+# Lmulti <- envelope(ppp.PA, Lcross, nsim = 99, rank = 1, # error message
+#                   I = "presence", global = FALSE,   # error message because ov "I" variable
+#                   simulate = expression(rlabel(ppp.PA))) # error message
+
+# let's change the code with
+
+Lmulti <- envelope(ppp.PA, Lcross, nsim = 99, rank = 1, 
+                   I2 = "presence", global = FALSE,  
+                   simulate = expression(rlabel(ppp.PA))) 
+
+# Taken together, if we only did an analysis that ignored the distribution of cactus, 
+# we would have very different conclusions regarding the spatial pattern (Fig. 4.8), 
+# where we would conclude that C. vittiger has an aggregated distribution. However, 
+# this pattern is driven by the pattern of cactus, which constrains the distribution of 
+# C. vittiger.
+
+# Finally, we can consider continuous marks through the use of the mark correlation 
+# function. For this example, we consider cactus area as a continuous mark. 
+# Consequently, we ask whether cactus tends to be aggregated by size or if there is an 
+# inhibition process where larger cacti tend to be near smaller ones. This can be done by 
+# creating a spatstat object where we use cactus size as the quantitative mark and then 
+# use the markcorr function (Fig. 4.9):
+
+ppp.area <- ppp(cactus$East, cactus$North, window = ppp.window, marks = cactus$Area)
+mcf.area <- markcorr(ppp.area)
+MCFenv <- envelope(ppp.area, markcorr, nsim = 99, correction = "iso", global = FALSE)
+plot(MCFenv, shade = c("hi", "lo"), legend = F)
+
+# Note that in this case, if the observed value is above 1, there is evidence for a 
+# positive mark correlation, such that large cacti tend to be near other large cacti. 
+# If the value is <1, large cacti tend to be near smaller cacti. This analysis suggests 
+# that there is no strong spatial pattern of cactus size across the plot (i.e., large 
+# cacti are not aggregated).
+
+
+#####        paragraph 4.3.6      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+
+
+
+
+
 
 
 
