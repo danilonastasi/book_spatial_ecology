@@ -64,6 +64,8 @@ library(spatstat)
 cactus <- read.csv('cactus.csv', header = T)
 # boundary <- read.csv("cactus_boundary.csv", header = T) # error message
 boundary <- read.csv("cactus_boundaries.csv", header = T) # the name file is "cactus_boundaries"
+# ppp.window <- owin(xrange = c(boundary$Xmin, boundary$Xmax), 
+#                    Yrange = c(boundary$Ymin, boundary$Ymax)) # error message
 ppp.window <- owin(xrange = c(boundary$Xmin, boundary$Xmax),
                     yrange = c(boundary$Ymin, boundary$Ymax))
 # xrange <- c(boundary$Xmin, boundary$Xmax)
@@ -283,9 +285,9 @@ Lbug <- envelope(ppp.bug, Lest, nsim = 99, rank = 1, i = "presence", global = F)
 # pair correlation function) with a random-labeling simulation to interpret the spatial 
 # pattern of marks (Fig. 4.8b).
 
-# Lmulti <- envelope(ppp.PA, Lcross, nsim = 99, rank = 1, # error message
+# Lmulti <- envelope(ppp.PA, Lcross, nsim = 99, rank = 1, 
 #                   I = "presence", global = FALSE,   # error message because ov "I" variable
-#                   simulate = expression(rlabel(ppp.PA))) # error message
+#                   simulate = expression(rlabel(ppp.PA))) 
 
 # let's change the code with
 
@@ -322,11 +324,149 @@ plot(MCFenv, shade = c("hi", "lo"), legend = F)
 #####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
 #####  revisited  #####
 
+# Point process models allow for understanding and accounting for inhomogeneous point 
+# processes: when point processes vary by location, such as across environmental gradients. 
+# An inhomogeneous point process model is similar to a generalized linear model (GLM) for 
+# point data (very similar to a Poisson regression; more on GLMs in Chap. 6), where we are 
+# modeling the intensity of points in the study area (Renner et al. 2015).
 
+# We could use a variety of covariates to account for inhomogeneous point processes. 
+# We will consider two types of covariates. First, we start with simply accounting for 
+# spatial trend based on x–y coordinates (see Ch. 6 for more on spatial trend). We can 
+# fit different point process models and inspect the model fit. Second, we will import 
+# a raster layer that quantifies herbaceous vegetation height in the plot (see Chap. 5 
+# for more on these data and their interpretation). Surrounding vegetation height may be 
+# relevant for interpreting Opuntia distribution due to light limitation (Hicks and 
+# Mauchamp 2000) or indirect effects from variation in herbivory (Burger and Louda 1994). 
+# To fit a point process model, we use the ppm function:
 
+#simple intercept and trend models based on x,y coordinates
+pp.int <- ppm(ppp.cactus, ~ 1) #no trend(homogeneous)
+pp.xy <- ppm(ppp.cactus, ~ x + y) #linear trend
+pp.xy2 <- ppm(ppp.cactus, ~ polynom(x, y, 2)) #quadratic trend
 
+# Adding x-y coordinates in a point process model can sometimes cause difficulty for model 
+# convergence, such that it may require rescaling coordinates. In the above models, we 
+# manually centered the ppp objects (window and point coordinates by subtracting the mean 
+# of the x and y coordinates; code not shown) to insure convergence, but the rescale 
+# function in the spatstat package could also be used. To use a raster layer, we must 
+# convert the raster (Fig. 4.10a) to a matrix and then an image file that spatstat can 
+# interpret. We can then fit the model and contrast models with AIC.
 
+#model based on covariates from a raster layer
+library(raster)
+# veg.height <- raster('cactus_matrix') # we miss the file "cactus_matrix"
 
+#####  we skip this code because we miss a file "cactus_matrix"   #####
 
+#raster into an image covariate that spatstat can read
+# veg.height <- data.frame(rasterToPoints(veg.height))
+# veg.height <- veg.height[order(veg.height$x, veg.height$y), ]#sort
+# veg.height.mat <- matrix(NA, nrow=length(unique(veg.height$x)), ncol=length(unique(veg.height$y)))
+# veg.height.mat[] <- veg.height$Height
+# cov.veg <- im(mat = veg.height.mat, Xrange = c(boundary$Xmin, boundary$Xmax), 
+#               Yrange = c(boundary$Ymin, boundary$Ymax))
+#point process model based on vegetation covariate
+# pp.veg <- ppm(ppp.cactus,~ veg, covariates = list(veg=cov.veg))
+#model selection with AIC
+# data.frame(model = c("int", "xy", "xy^2", "veg"), 
+#            AIC = c(AIC(pp.int), AIC(pp.xy), AIC(pp.xy2), AIC(pp.veg)))
+
+##### let's have a look to the code in the zip file with all data from the book ####
+
+AIC(pp.xy)
+summary(pp.xy) #Warning: singular matrix; need to re-scale x-y coordinates
+
+#Rescale coordinates via centering (also see rescale function)
+centerx <- (boundary$Xmax + boundary$Xmin)/2
+centery <- (boundary$Ymax + boundary$Ymin)/2
+
+ppp.windows <- owin(xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
+                   yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
+ppp.cactuss <- ppp(cactus$East- centerx, cactus$North- centery, window=ppp.windows)
+
+#re-fit with rescaled coordinates and window
+pp.xy <- ppm(ppp.cactuss, ~ x + y)
+summary(pp.xy)
+AIC(pp.xy)
+AIC(pp.xy2)
+
+#no trend(homogeneous point process)
+pp.int <- ppm(ppp.cactuss, ~1)
+summary(pp.int)
+AIC(pp.int)
+
+#point process model with quadratic trend
+pp.xy2 <- ppm(ppp.cactuss, ~ polynom(x, y, 2))
+summary(pp.xy2)
+AIC(pp.xy2)
+
+#point process model based on vegetation covariate
+veg.height <- read.csv('cactus_matrix.csv', header=T)
+
+#inspect
+head(veg.height)
+
+#make a square matrix for creating im object
+veg.height <- veg.height[order(veg.height$x, veg.height$y), ]#sort
+veg.height.mat <- matrix(NA, nrow=length(unique(veg.height$x)), ncol=length(unique(veg.height$y)))
+veg.height.mat[] <- veg.height$Height
+
+#create im object
+cov.veg <- im(mat=veg.height.mat,
+              xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
+              yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
+
+#fit ppm model with vegetation
+pp.veg <- ppm(ppp.cactuss, ~veg, covariates=list(veg=cov.veg))
+AIC(pp.veg)
+summary(pp.veg)
+
+#plot relationship
+# plot(effectfun(pp.veg, "veg", se.fit=T)) # error message
+
+##### let's comeback to the book without using "cactus_matrix"   #####
+#####                                                            #####
+
+veg.height <- read.csv('cactus_matrix.csv', header=T)
+# veg.height <- data.frame(rasterToPoints(veg.height))  # it is already a dataframe
+veg.height <- veg.height[order(veg.height$x, veg.height$y), ]#sort
+veg.height.mat <- matrix(NA, nrow=length(unique(veg.height$x)), ncol=length(unique(veg.height$y)))
+veg.height.mat[] <- veg.height$Height
+# cov.veg <- im(mat = veg.height.mat, Xrange = c(boundary$Xmin, boundary$Xmax), # error message
+#                Yrange = c(boundary$Ymin, boundary$Ymax)) # error message
+
+# let's fix the code:
+
+cov.veg <- im(mat = veg.height.mat, xrange = c(boundary$Xmin, boundary$Xmax),
+               yrange = c(boundary$Ymin, boundary$Ymax))
+
+#point process model based on vegetation covariate
+pp.veg <- ppm(ppp.cactus,~ veg, covariates = list(veg=cov.veg))
+#model selection with AIC
+data.frame(model = c("int", "xy", "xy^2", "veg"), 
+            AIC = c(AIC(pp.int), AIC(pp.xy), AIC(pp.xy2), AIC(pp.veg)))
+
+# Based on the model selection criteria (AIC), there is some evidence of spatial 
+# heterogeneity in the intensity of points, suggesting that this could be considered an 
+# inhomogeneous point process. The most supported model is one with a quadratic trend, 
+# but including the raster image of vegetation height also had some support. We can plot 
+# this estimated process with the predict function:
+
+#plot the point process models
+plot(predict(pp.xy2, type = "trend"))
+plot(ppp.cactus, add = T)
+
+# We can also adjust for this pattern in the K function. To do so, we first need to make 
+# an image object of the predicted point process model that spatstat can use (similar to 
+# a raster map of the covariate of interest). We then use the Linhom function to account 
+# for this heterogeneity when quantifying spatial dispersion (Fig. 4.10c).
+
+# pp.xy.pred <- predict.ppm(pp.xy2, type = "trend”)  # error message, let's change:
+pp.xy.pred <- predict.ppm(pp.xy2, type = "trend")
+# Lxycsr <- envelope(ppp.cactus, Linhom, nsim = 99, rank = 1,  
+#                          correction = "translate", 
+#                          simulate = expression(rpoispp(pp.xy.pred)), global = F) # error message
+# plot(Lxycsr, . - r ~ r, shade = c("hi", "lo"), legend = F) # error message
 
 
