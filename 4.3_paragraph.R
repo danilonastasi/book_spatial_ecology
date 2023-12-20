@@ -374,53 +374,53 @@ library(raster)
 
 ##### let's have a look to the code in the zip file with all data from the book ####
 
-AIC(pp.xy)
-summary(pp.xy) #Warning: singular matrix; need to re-scale x-y coordinates
+# AIC(pp.xy)
+# summary(pp.xy) #Warning: singular matrix; need to re-scale x-y coordinates
 
 #Rescale coordinates via centering (also see rescale function)
-centerx <- (boundary$Xmax + boundary$Xmin)/2
-centery <- (boundary$Ymax + boundary$Ymin)/2
+# centerx <- (boundary$Xmax + boundary$Xmin)/2
+# centery <- (boundary$Ymax + boundary$Ymin)/2
 
-ppp.windows <- owin(xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
-                   yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
-ppp.cactuss <- ppp(cactus$East- centerx, cactus$North- centery, window=ppp.windows)
+# ppp.windows <- owin(xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
+#                   yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
+# ppp.cactuss <- ppp(cactus$East- centerx, cactus$North- centery, window=ppp.windows)
 
 #re-fit with rescaled coordinates and window
-pp.xy <- ppm(ppp.cactuss, ~ x + y)
-summary(pp.xy)
-AIC(pp.xy)
-AIC(pp.xy2)
+# pp.xy <- ppm(ppp.cactuss, ~ x + y)
+# summary(pp.xy)
+# AIC(pp.xy)
+# AIC(pp.xy2)
 
 #no trend(homogeneous point process)
-pp.int <- ppm(ppp.cactuss, ~1)
-summary(pp.int)
-AIC(pp.int)
+# pp.int <- ppm(ppp.cactuss, ~1)
+# summary(pp.int)
+# AIC(pp.int)
 
 #point process model with quadratic trend
-pp.xy2 <- ppm(ppp.cactuss, ~ polynom(x, y, 2))
-summary(pp.xy2)
-AIC(pp.xy2)
+# pp.xy2 <- ppm(ppp.cactuss, ~ polynom(x, y, 2))
+# summary(pp.xy2)
+# AIC(pp.xy2)
 
 #point process model based on vegetation covariate
-veg.height <- read.csv('cactus_matrix.csv', header=T)
+# veg.height <- read.csv('cactus_matrix.csv', header=T)
 
 #inspect
-head(veg.height)
+# head(veg.height)
 
 #make a square matrix for creating im object
-veg.height <- veg.height[order(veg.height$x, veg.height$y), ]#sort
-veg.height.mat <- matrix(NA, nrow=length(unique(veg.height$x)), ncol=length(unique(veg.height$y)))
-veg.height.mat[] <- veg.height$Height
+# veg.height <- veg.height[order(veg.height$x, veg.height$y), ]#sort
+# veg.height.mat <- matrix(NA, nrow=length(unique(veg.height$x)), ncol=length(unique(veg.height$y)))
+# veg.height.mat[] <- veg.height$Height
 
 #create im object
-cov.veg <- im(mat=veg.height.mat,
-              xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
-              yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
+# cov.veg <- im(mat=veg.height.mat,
+#              xrange=c(boundary$Xmin - centerx, boundary$Xmax - centerx),
+#              yrange=c(boundary$Ymin- centery, boundary$Ymax- centery))
 
 #fit ppm model with vegetation
-pp.veg <- ppm(ppp.cactuss, ~veg, covariates=list(veg=cov.veg))
-AIC(pp.veg)
-summary(pp.veg)
+# pp.veg <- ppm(ppp.cactuss, ~veg, covariates=list(veg=cov.veg))
+# AIC(pp.veg)
+# summary(pp.veg)
 
 #plot relationship
 # plot(effectfun(pp.veg, "veg", se.fit=T)) # error message
@@ -469,4 +469,5 @@ pp.xy.pred <- predict.ppm(pp.xy2, type = "trend")
 #                          simulate = expression(rpoispp(pp.xy.pred)), global = F) # error message
 # plot(Lxycsr, . - r ~ r, shade = c("hi", "lo"), legend = F) # error message
 
+ppp.PA <- ppp(cactus$East, cactus$North, window = ppp.window, marks = cactus$CheliPA)
 
