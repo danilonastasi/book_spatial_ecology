@@ -464,10 +464,106 @@ plot(ppp.cactus, add = T)
 
 # pp.xy.pred <- predict.ppm(pp.xy2, type = "trend”)  # error message, let's change:
 pp.xy.pred <- predict.ppm(pp.xy2, type = "trend")
-# Lxycsr <- envelope(ppp.cactus, Linhom, nsim = 99, rank = 1,  
-#                          correction = "translate", 
-#                          simulate = expression(rpoispp(pp.xy.pred)), global = F) # error message
-# plot(Lxycsr, . - r ~ r, shade = c("hi", "lo"), legend = F) # error message
+Lxycsr <- envelope(ppp.cactus, Linhom, nsim = 99, rank = 1,  
+                          correction = "translate", 
+                          simulate = expression(rpoispp(pp.xy.pred)), global = F)
+plot(Lxycsr, . - r ~ r, shade = c("hi", "lo"), legend = F) # error message
 
-ppp.PA <- ppp(cactus$East, cactus$North, window = ppp.window, marks = cactus$CheliPA)
+# Note that the clustering previously observed is largely (but not entirely) accounted 
+# for when considering this inhomogeneity . This general approach can be used to control 
+# for factors that may influence patterns to ask whether clustering or uniform distributions 
+# occur after controlling for these effects.
+
+
+#####        paragraph 4.3.7      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+# While CSR is a useful starting point as a null model, in some situations we may be 
+# interested in using alternative null models. Some null models can be derived from a 
+# Poisson cluster process. Two common Poisson cluster processes considered in ecology are 
+# Matérn cluster processes and Thomas cluster processes (Velazquez et al. 2016). In a 
+# Matérn cluster process, there are two types of points. The first are “parent” points, 
+# which have a Poisson distribution. Second, for each parent point, there are “offspring” 
+# points, which are independently and uniformly distributed around the parent points 
+# within a radius r (Fig. 4.11a). Consequently, these “offspring” points generate an 
+# underlying aggregated pattern. Similarly, with a Thomas process, “offspring” points 
+# are generated with parents but with an isotropic Gaussian distribution (similar to 
+# a Gaussian kernel described in Chap. 2). Such a process could reflect biological 
+# phenomena such as seed dispersal from parent plants.
+
+# We can use these alternative null models in spatstat , with the above functions 
+# (K, L, pair correlation g, etc.). For example, a K function with a Thomas process 
+# as a null model can be quantified as:
+
+Kthomas <- kppm(ppp.cactus, ~ 1, "Thomas")
+
+# To interpret this model, summary(Kthomas) provides a wealth of information regarding 
+# the fitted model. For example, it provides an estimate of the mean cluster size 
+# (4.6 points), as well as the best fit scale for that size (3.7 m). Note that in the 
+# above kppm function, we can also account for covariates (the “~1” states to not consider 
+# covariates and only include an intercept in the model; ~polynom(x, y, 2) would account 
+# for the trend shown above).
+
+# We can use the envelope function here as well to interpret the point pattern.
+
+Kthomas.env <- envelope(Kthomas, Lest, nsim = 99, rank = 1, global = F)
+plot(Kthomas.env, . - r ~ r, shade=c("hi", "lo"), legend = F)
+
+# These models suggest that the observed point pattern is not substantially different 
+# from what would be expected from a Thomas process (Fig. 4.11d) or a Matérn process 
+# (Fig. 4.11c). This result is consistent with the previous results, which illustrated 
+# the aggregative pattern.
+
+
+#####        paragraph 4.3.8      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+# It is frequently useful to be able to simulate patterns. Simulations provide a means 
+# to create a known “truth” that we can then use to evaluate potential hypotheses or 
+# models that might be of interest to spatial ecology and conservation. Indeed, simulations 
+# are increasingly used in ecology to interpret the accuracy and sensitivity of models 
+# (Kery and Royle 2016). We will consider the problem of simulating spatial data 
+# throughout this book.
+
+# We can simulate point processes. In fact, for some problems mentioned above, we were 
+# simulating data when using Monte Carlo simulations to infer significance of point 
+# patterns. To illustrate, we can simulate a homogeneous point process with the same 
+# intensity, λ, as in our empirical data, using the rpoispp function:
+
+sim.pp <- rpoispp(lambda=intensity(ppp.cactus), nsim = 4, win=ppp.window)
+#access the x-y coordinates for points in simulation 1
+sim.pp[[1]]$x
+sim.pp[[1]]$y
+
+# In this case, we passed λ of the empirical data using the command intensity, and 
+# requested four simulations (realizations) based on a Poisson point process with 
+# the observed intensity. This function can be adjusted for inhomogeneous point 
+# processes by passing a functional relationship that describes the inhomogeneous 
+# process on the x–y plane, rather than a mean intensity:
+
+#make a function based on ppm model coefficients
+pp2.fun <- function(x, y) {
+   exp(pp.xy2$coef[1] + pp.xy2$coef[2] * x + pp.xy2$coef[3] * y + 
+   pp.xy2$coef[4] * I(x^2) + pp.xy2$coef[5] * x * y + pp.xy2$coef[6] * I(y^2))
+}
+#or using expectation from xy^2 model
+pp2.sim <- rpoispp(pp.xy.pred, nsim = 4)
+#simulate inhomogeneous point process from ppm
+pp2.sim.fun <- rpoispp(pp2.fun, nsim = 4, win = ppp.window)
+
+#plot
+plot(pp2.sim)
+plot(pp2.sim.fun)
+
+
+#####        paragraph 4.4.1      #####
+#####  from the book "Spatial Ecology and Conservation Modeling" - Springer(2018)  #####
+#####  revisited  #####
+
+
+
+
+
 
